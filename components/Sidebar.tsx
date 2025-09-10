@@ -1,0 +1,91 @@
+import React, { useMemo } from 'react';
+import { View, User } from '../types';
+import { DashboardIcon, ExecutivesIcon, CalendarIcon, ContactsIcon, ExpensesIcon, OrganizationsIcon, SettingsIcon, LogoIcon, TasksIcon, SecretariesIcon } from './Icons';
+
+interface SidebarProps {
+  currentView: View;
+  setCurrentView: (view: View) => void;
+  isOpen: boolean;
+  setOpen: (isOpen: boolean) => void;
+  currentUser: User | null;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentView, isOpen, setOpen }) => {
+  const allNavItems: { view: View; label: string; icon: React.ReactNode }[] = [
+    { view: 'dashboard', label: 'Painel', icon: <DashboardIcon /> },
+    { view: 'organizations', label: 'Organizações', icon: <OrganizationsIcon /> },
+    { view: 'executives', label: 'Executivos', icon: <ExecutivesIcon /> },
+    { view: 'secretaries', label: 'Secretárias', icon: <SecretariesIcon /> },
+    { view: 'agenda', label: 'Agenda', icon: <CalendarIcon /> },
+    { view: 'contacts', label: 'Contatos', icon: <ContactsIcon /> },
+    { view: 'expenses', label: 'Despesas', icon: <ExpensesIcon /> },
+    { view: 'tasks', label: 'Tarefas', icon: <TasksIcon /> },
+    { view: 'settings', label: 'Configurações', icon: <SettingsIcon /> },
+  ];
+
+  const visibleNavItems = useMemo(() => {
+    if (!currentUser) return [];
+    switch (currentUser.role) {
+      case 'executive':
+        const executiveViews: View[] = ['dashboard', 'agenda', 'contacts', 'expenses', 'tasks'];
+        return allNavItems.filter(item => executiveViews.includes(item.view));
+      case 'secretary':
+        const secretaryHiddenViews: View[] = ['organizations', 'settings'];
+        return allNavItems.filter(item => !secretaryHiddenViews.includes(item.view));
+      case 'admin':
+      case 'master':
+      default:
+        return allNavItems;
+    }
+  }, [currentUser]);
+
+  const handleNavClick = (view: View) => {
+    setCurrentView(view);
+    if (window.innerWidth < 1024) { // Close sidebar on mobile after navigation
+      setOpen(false);
+    }
+  };
+
+  return (
+    <>
+      {/* Overlay for mobile */}
+      <div 
+        className={`fixed inset-0 bg-black/50 z-30 transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      ></div>
+
+      <aside className={`fixed lg:relative top-0 left-0 h-full bg-slate-800 text-white w-64 flex flex-col z-40 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+        <div className="flex items-center justify-center p-6 border-b border-slate-700">
+          <LogoIcon />
+          <h1 className="text-xl font-bold ml-3">Executiva Cloud</h1>
+        </div>
+        <nav className="flex-1 px-4 py-6 space-y-2">
+          {visibleNavItems.map(({ view, label, icon }) => (
+            <a
+              key={view}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                handleNavClick(view);
+              }}
+              className={`flex items-center px-4 py-3 rounded-lg transition-colors duration-200 ${
+                currentView === view
+                  ? 'bg-slate-900 text-white font-semibold'
+                  : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+            >
+              <span className="w-6 h-6">{icon}</span>
+              <span className="ml-4 capitalize">{label}</span>
+            </a>
+          ))}
+        </nav>
+        <div className="p-6 border-t border-slate-700">
+            <p className="text-xs text-slate-400">&copy; 2024 Executiva Cloud</p>
+        </div>
+      </aside>
+    </>
+  );
+};
+
+export default Sidebar;
