@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Contact, ContactType } from '../types';
 import Modal from './Modal';
+import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon, EmailIcon, PhoneIcon } from './Icons';
 
 interface ContactsViewProps {
@@ -85,6 +86,7 @@ const ContactForm: React.FC<{ contact: Partial<Contact>, onSave: (contact: Conta
 const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, contactTypes, executiveId }) => {
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingContact, setEditingContact] = useState<Partial<Contact> | null>(null);
+    const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
 
     const handleAddContact = () => {
         setEditingContact({ executiveId });
@@ -96,12 +98,17 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
         setModalOpen(true);
     };
 
-    const handleDeleteContact = (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este contato?')) {
-            setContacts(contacts.filter(c => c.id !== id));
-        }
+    const handleDeleteContact = (contact: Contact) => {
+        setContactToDelete(contact);
     };
     
+    const confirmDelete = () => {
+        if (contactToDelete) {
+            setContacts(contacts.filter(c => c.id !== contactToDelete.id));
+            setContactToDelete(null);
+        }
+    };
+
     const handleSaveContact = (contact: Contact) => {
         if (editingContact && editingContact.id) {
             setContacts(contacts.map(c => c.id === contact.id ? contact : c));
@@ -160,7 +167,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
                             <button onClick={() => handleEditContact(contact)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar contato">
                                 <EditIcon />
                             </button>
-                            <button onClick={() => handleDeleteContact(contact.id)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir contato">
+                            <button onClick={() => handleDeleteContact(contact)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir contato">
                                 <DeleteIcon />
                             </button>
                         </div>
@@ -181,6 +188,16 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
                         contactTypes={contactTypes}
                     />
                 </Modal>
+            )}
+
+            {contactToDelete && (
+                 <ConfirmationModal
+                    isOpen={!!contactToDelete}
+                    onClose={() => setContactToDelete(null)}
+                    onConfirm={confirmDelete}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir o contato ${contactToDelete.fullName}?`}
+                />
             )}
         </div>
     );

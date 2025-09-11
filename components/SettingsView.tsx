@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { EventType, ContactType } from '../types';
 import Modal from './Modal';
+import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon } from './Icons';
 
 // --- Event Type Management ---
@@ -71,9 +72,11 @@ interface SettingsViewProps {
 const SettingsView: React.FC<SettingsViewProps> = ({ eventTypes, setEventTypes, contactTypes, setContactTypes }) => {
     const [isEventTypeModalOpen, setEventTypeModalOpen] = useState(false);
     const [editingEventType, setEditingEventType] = useState<Partial<EventType> | null>(null);
+    const [eventTypeToDelete, setEventTypeToDelete] = useState<EventType | null>(null);
 
     const [isContactTypeModalOpen, setContactTypeModalOpen] = useState(false);
     const [editingContactType, setEditingContactType] = useState<Partial<ContactType> | null>(null);
+    const [contactTypeToDelete, setContactTypeToDelete] = useState<ContactType | null>(null);
 
     // Event Type Handlers
     const handleSaveEventType = (eventType: EventType) => {
@@ -81,8 +84,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ eventTypes, setEventTypes, 
         setEventTypeModalOpen(false);
         setEditingEventType(null);
     };
-    const handleDeleteEventType = (id: string) => {
-        if (window.confirm('Tem certeza?')) setEventTypes(prev => prev.filter(et => et.id !== id));
+    const confirmDeleteEventType = () => {
+        if (!eventTypeToDelete) return;
+        setEventTypes(prev => prev.filter(et => et.id !== eventTypeToDelete.id));
+        setEventTypeToDelete(null);
     };
 
     // Contact Type Handlers
@@ -91,8 +96,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ eventTypes, setEventTypes, 
         setContactTypeModalOpen(false);
         setEditingContactType(null);
     };
-    const handleDeleteContactType = (id: string) => {
-        if (window.confirm('Tem certeza?')) setContactTypes(prev => prev.filter(ct => ct.id !== id));
+    const confirmDeleteContactType = () => {
+        if (!contactTypeToDelete) return;
+        setContactTypes(prev => prev.filter(ct => ct.id !== contactTypeToDelete.id));
+        setContactTypeToDelete(null);
     };
 
 
@@ -121,7 +128,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ eventTypes, setEventTypes, 
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button onClick={() => { setEditingEventType(et); setEventTypeModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600"><EditIcon /></button>
-                                    <button onClick={() => handleDeleteEventType(et.id)} className="p-2 text-slate-400 hover:text-red-600"><DeleteIcon /></button>
+                                    <button onClick={() => setEventTypeToDelete(et)} className="p-2 text-slate-400 hover:text-red-600"><DeleteIcon /></button>
                                 </div>
                             </li>
                         ))}
@@ -142,7 +149,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ eventTypes, setEventTypes, 
                                 <span className="font-medium text-slate-800">{ct.name}</span>
                                 <div className="flex items-center gap-2">
                                     <button onClick={() => { setEditingContactType(ct); setContactTypeModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600"><EditIcon /></button>
-                                    <button onClick={() => handleDeleteContactType(ct.id)} className="p-2 text-slate-400 hover:text-red-600"><DeleteIcon /></button>
+                                    <button onClick={() => setContactTypeToDelete(ct)} className="p-2 text-slate-400 hover:text-red-600"><DeleteIcon /></button>
                                 </div>
                             </li>
                         ))}
@@ -160,6 +167,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({ eventTypes, setEventTypes, 
                 <Modal title={editingContactType?.id ? 'Editar Tipo de Contato' : 'Novo Tipo de Contato'} onClose={() => setContactTypeModalOpen(false)}>
                     <ContactTypeForm contactType={editingContactType || {}} onSave={handleSaveContactType} onCancel={() => { setContactTypeModalOpen(false); setEditingContactType(null); }} />
                 </Modal>
+            )}
+
+            {eventTypeToDelete && (
+                <ConfirmationModal
+                    isOpen={!!eventTypeToDelete}
+                    onClose={() => setEventTypeToDelete(null)}
+                    onConfirm={confirmDeleteEventType}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir o tipo de evento "${eventTypeToDelete.name}"?`}
+                />
+            )}
+
+            {contactTypeToDelete && (
+                 <ConfirmationModal
+                    isOpen={!!contactTypeToDelete}
+                    onClose={() => setContactTypeToDelete(null)}
+                    onConfirm={confirmDeleteContactType}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir o tipo de contato "${contactTypeToDelete.name}"?`}
+                />
             )}
         </div>
     );

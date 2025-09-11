@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, User } from '../types';
-import { DashboardIcon, ExecutivesIcon, CalendarIcon, ContactsIcon, ExpensesIcon, OrganizationsIcon, SettingsIcon, LogoIcon, TasksIcon, SecretariesIcon } from './Icons';
+import { DashboardIcon, ExecutivesIcon, CalendarIcon, ContactsIcon, ExpensesIcon, OrganizationsIcon, SettingsIcon, LogoIcon, TasksIcon, SecretariesIcon, ReportsIcon } from './Icons';
 
 interface SidebarProps {
   currentView: View;
@@ -11,7 +11,9 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentView, isOpen, setOpen }) => {
-  const allNavItems: { view: View; label: string; icon: React.ReactNode }[] = [
+  const appVersion = '1.3.0';
+
+  const allNavItems: { view: View; label: string; icon: React.ReactNode }[] = useMemo(() => [
     { view: 'dashboard', label: 'Painel', icon: <DashboardIcon /> },
     { view: 'organizations', label: 'Organizações', icon: <OrganizationsIcon /> },
     { view: 'executives', label: 'Executivos', icon: <ExecutivesIcon /> },
@@ -20,14 +22,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
     { view: 'contacts', label: 'Contatos', icon: <ContactsIcon /> },
     { view: 'expenses', label: 'Despesas', icon: <ExpensesIcon /> },
     { view: 'tasks', label: 'Tarefas', icon: <TasksIcon /> },
+    { view: 'reports', label: 'Relatórios', icon: <ReportsIcon /> },
     { view: 'settings', label: 'Configurações', icon: <SettingsIcon /> },
-  ];
+  ], []);
 
   const visibleNavItems = useMemo(() => {
     if (!currentUser) return [];
     switch (currentUser.role) {
       case 'executive':
-        const executiveViews: View[] = ['dashboard', 'agenda', 'contacts', 'expenses', 'tasks'];
+        const executiveViews: View[] = ['dashboard', 'agenda', 'contacts', 'expenses', 'tasks', 'reports'];
         return allNavItems.filter(item => executiveViews.includes(item.view));
       case 'secretary':
         const secretaryHiddenViews: View[] = ['organizations', 'settings'];
@@ -37,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
       default:
         return allNavItems;
     }
-  }, [currentUser]);
+  }, [currentUser, allNavItems]);
 
   const handleNavClick = (view: View) => {
     setCurrentView(view);
@@ -81,7 +84,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
           ))}
         </nav>
         <div className="p-6 border-t border-slate-700">
-            <p className="text-xs text-slate-400">&copy; 2024 Executiva Cloud</p>
+            <p className="text-xs text-slate-400">{`© ${new Date().getFullYear()} Executiva Cloud`}</p>
+            <p className="text-xs text-slate-500 mt-1">{`Versão ${appVersion}`}</p>
         </div>
       </aside>
     </>

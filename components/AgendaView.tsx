@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Event, EventType, RecurrenceRule } from '../types';
 import Modal from './Modal';
+import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon, BellIcon, RecurrenceIcon } from './Icons';
 
 interface AgendaViewProps {
@@ -299,6 +300,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Partial<Event> | null>(null);
     const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+    const [showRecurrenceDeleteModal, setShowRecurrenceDeleteModal] = useState(false);
 
     const handleAddEvent = () => {
         setEditingEvent({ executiveId });
@@ -311,16 +313,19 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
     };
 
     const handleDeleteClick = (event: Event) => {
+        setEventToDelete(event);
         if (event.recurrenceId) {
-            setEventToDelete(event);
-        } else {
-            if (window.confirm('Tem certeza que deseja excluir este evento?')) {
-                setEvents(allEvents => allEvents.filter(e => e.id !== event.id));
-            }
+            setShowRecurrenceDeleteModal(true);
         }
     };
     
-    const executeDelete = (type: 'one' | 'all' | 'future') => {
+    const confirmDelete = () => {
+        if (!eventToDelete) return;
+        setEvents(allEvents => allEvents.filter(e => e.id !== eventToDelete.id));
+        setEventToDelete(null);
+    };
+
+    const executeRecurrenceDelete = (type: 'one' | 'all' | 'future') => {
         if (!eventToDelete) return;
 
         setEvents(allEvents => {
@@ -340,7 +345,8 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
             }
             return allEvents;
         });
-
+        
+        setShowRecurrenceDeleteModal(false);
         setEventToDelete(null);
     };
 
@@ -453,17 +459,27 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
                 </Modal>
             )}
 
-            {eventToDelete && (
-                <Modal title="Excluir Evento Recorrente" onClose={() => setEventToDelete(null)}>
+            {showRecurrenceDeleteModal && (
+                <Modal title="Excluir Evento Recorrente" onClose={() => { setShowRecurrenceDeleteModal(false); setEventToDelete(null); }}>
                     <div className="space-y-4">
                         <p className="text-sm text-slate-600">Este é um evento recorrente. O que você gostaria de excluir?</p>
                         <div className="flex flex-col space-y-3">
-                             <button onClick={() => executeDelete('one')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Apenas esta ocorrência</button>
-                             <button onClick={() => executeDelete('future')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Esta e as futuras ocorrências</button>
-                             <button onClick={() => executeDelete('all')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Toda a série</button>
+                             <button onClick={() => executeRecurrenceDelete('one')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Apenas esta ocorrência</button>
+                             <button onClick={() => executeRecurrenceDelete('future')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Esta e as futuras ocorrências</button>
+                             <button onClick={() => executeRecurrenceDelete('all')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Toda a série</button>
                         </div>
                     </div>
                 </Modal>
+            )}
+
+            {eventToDelete && !eventToDelete.recurrenceId && (
+                <ConfirmationModal
+                    isOpen={!!eventToDelete}
+                    onClose={() => setEventToDelete(null)}
+                    onConfirm={confirmDelete}
+                    title="Confirmar Exclusão"
+                    message="Tem certeza que deseja excluir este evento? Esta ação não pode ser desfeita."
+                />
             )}
         </div>
     );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Expense, ExpenseStatus } from '../types';
 import Modal from './Modal';
+import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon } from './Icons';
 
 interface ExpensesViewProps {
@@ -75,6 +76,7 @@ const ExpenseForm: React.FC<{ expense: Partial<Expense>, onSave: (expense: Expen
 const ExpensesView: React.FC<ExpensesViewProps> = ({ expenses, setExpenses, executiveId }) => {
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
+    const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
     const handleAddExpense = () => {
         setEditingExpense({ executiveId });
@@ -86,9 +88,14 @@ const ExpensesView: React.FC<ExpensesViewProps> = ({ expenses, setExpenses, exec
         setModalOpen(true);
     };
 
-    const handleDeleteExpense = (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir esta despesa?')) {
-            setExpenses(prev => prev.filter(e => e.id !== id));
+    const handleDeleteExpense = (expense: Expense) => {
+        setExpenseToDelete(expense);
+    };
+    
+    const confirmDelete = () => {
+        if (expenseToDelete) {
+            setExpenses(prev => prev.filter(e => e.id !== expenseToDelete.id));
+            setExpenseToDelete(null);
         }
     };
     
@@ -165,7 +172,7 @@ const ExpensesView: React.FC<ExpensesViewProps> = ({ expenses, setExpenses, exec
                                             <button onClick={() => handleEditExpense(expense)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar despesa">
                                                 <EditIcon />
                                             </button>
-                                            <button onClick={() => handleDeleteExpense(expense.id)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir despesa">
+                                            <button onClick={() => handleDeleteExpense(expense)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir despesa">
                                                 <DeleteIcon />
                                             </button>
                                         </div>
@@ -182,6 +189,16 @@ const ExpensesView: React.FC<ExpensesViewProps> = ({ expenses, setExpenses, exec
                 <Modal title={editingExpense?.id ? 'Editar Despesa' : 'Nova Despesa'} onClose={() => setModalOpen(false)}>
                     <ExpenseForm expense={editingExpense || {}} onSave={handleSaveExpense} onCancel={() => { setModalOpen(false); setEditingExpense(null); }} />
                 </Modal>
+            )}
+
+            {expenseToDelete && (
+                 <ConfirmationModal
+                    isOpen={!!expenseToDelete}
+                    onClose={() => setExpenseToDelete(null)}
+                    onConfirm={confirmDelete}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir a despesa "${expenseToDelete.description}"?`}
+                />
             )}
         </div>
     );

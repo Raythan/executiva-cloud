@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Executive, Organization, Department } from '../types';
+import { Executive, Organization, Department, Event, Contact, Expense, Task, User, Secretary } from '../types';
 import Modal from './Modal';
+import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon, EmailIcon, PhoneIcon } from './Icons';
 
 interface ExecutivesViewProps {
@@ -8,6 +9,13 @@ interface ExecutivesViewProps {
   setExecutives: React.Dispatch<React.SetStateAction<Executive[]>>;
   organizations: Organization[];
   departments: Department[];
+  secretaries: Secretary[];
+  setSecretaries: React.Dispatch<React.SetStateAction<Secretary[]>>;
+  setEvents: React.Dispatch<React.SetStateAction<Event[]>>;
+  setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
+  setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
 const ExecutiveForm: React.FC<{ executive: Partial<Executive>, onSave: (executive: Executive) => void, onCancel: () => void, organizations: Organization[], departments: Department[] }> = ({ executive, onSave, onCancel, organizations, departments }) => {
@@ -36,7 +44,7 @@ const ExecutiveForm: React.FC<{ executive: Partial<Executive>, onSave: (executiv
         e.preventDefault();
         if (!fullName) return;
         onSave({
-            id: executive.id || new Date().toISOString(),
+            id: executive.id || `exec_${new Date().getTime()}`,
             fullName,
             email,
             phone,
@@ -85,9 +93,10 @@ const ExecutiveForm: React.FC<{ executive: Partial<Executive>, onSave: (executiv
     );
 };
 
-const ExecutivesView: React.FC<ExecutivesViewProps> = ({ executives, setExecutives, organizations, departments }) => {
+const ExecutivesView: React.FC<ExecutivesViewProps> = ({ executives, setExecutives, organizations, departments, secretaries, setSecretaries, setEvents, setContacts, setExpenses, setTasks, setUsers }) => {
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingExecutive, setEditingExecutive] = useState<Partial<Executive> | null>(null);
+    const [executiveToDelete, setExecutiveToDelete] = useState<Executive | null>(null);
 
     const handleAddExecutive = () => {
         setEditingExecutive({});
@@ -99,17 +108,43 @@ const ExecutivesView: React.FC<ExecutivesViewProps> = ({ executives, setExecutiv
         setModalOpen(true);
     };
 
-    const handleDeleteExecutive = (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir este executivo? Todos os seus dados (eventos, contatos, etc) serão perdidos.')) {
-            setExecutives(executives.filter(e => e.id !== id));
+    const handleDeleteClick = (executive: Executive) => {
+        setExecutiveToDelete(executive);
+    };
+
+    const confirmDelete = () => {
+        if (executiveToDelete) {
+            const id = executiveToDelete.id;
+            // Delete the executive
+            setExecutives(execs => execs.filter(e => e.id !== id));
+            // Delete the user
+            setUsers(users => users.filter(u => u.executiveId !== id));
+            // Unlink from secretaries
+            setSecretaries(secs => secs.map(sec => ({
+                ...sec,
+                executiveIds: sec.executiveIds.filter(execId => execId !== id)
+            })));
+            // Cascade delete for all related data
+            setEvents(prev => prev.filter(item => item.executiveId !== id));
+            setContacts(prev => prev.filter(item => item.executiveId !== id));
+            setExpenses(prev => prev.filter(item => item.executiveId !== id));
+            setTasks(prev => prev.filter(item => item.executiveId !== id));
+            setExecutiveToDelete(null);
         }
     };
     
     const handleSaveExecutive = (executive: Executive) => {
         if (editingExecutive && editingExecutive.id) {
-            setExecutives(executives.map(e => e.id === executive.id ? executive : e));
+            setExecutives(execs => execs.map(e => e.id === executive.id ? executive : e));
+            setUsers(users => users.map(u => u.executiveId === executive.id ? { ...u, fullName: executive.fullName } : u));
         } else {
-            setExecutives([...executives, executive]);
+            setExecutives(execs => [...execs, executive]);
+            setUsers(users => [...users, {
+                id: `user_exec_${executive.id}`,
+                fullName: executive.fullName,
+                role: 'executive',
+                executiveId: executive.id,
+            }]);
         }
         setModalOpen(false);
         setEditingExecutive(null);
@@ -159,7 +194,7 @@ const ExecutivesView: React.FC<ExecutivesViewProps> = ({ executives, setExecutiv
                                             <button onClick={() => handleEditExecutive(exec)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar executivo">
                                                 <EditIcon />
                                             </button>
-                                            <button onClick={() => handleDeleteExecutive(exec.id)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir executivo">
+                                            <button onClick={() => handleDeleteClick(exec)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir executivo">
                                                 <DeleteIcon />
                                             </button>
                                         </div>
@@ -182,6 +217,16 @@ const ExecutivesView: React.FC<ExecutivesViewProps> = ({ executives, setExecutiv
                         departments={departments}
                     />
                 </Modal>
+            )}
+
+            {executiveToDelete && (
+                 <ConfirmationModal
+                    isOpen={!!executiveToDelete}
+                    onClose={() => setExecutiveToDelete(null)}
+                    onConfirm={confirmDelete}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir o executivo ${executiveToDelete.fullName}? Todos os seus dados (eventos, contatos, etc), vínculos com secretárias e seu acesso de usuário serão perdidos.`}
+                />
             )}
         </div>
     );

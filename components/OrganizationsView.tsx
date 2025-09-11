@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Organization, Department, Executive } from '../types';
+import { Organization, Department, Executive, User, Secretary, Event, Contact, Expense, Task } from '../types';
 import Modal from './Modal';
+import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon } from './Icons';
 
 interface OrganizationsViewProps {
@@ -10,6 +11,13 @@ interface OrganizationsViewProps {
   setDepartments: React.Dispatch<React.SetStateAction<Department[]>>;
   executives: Executive[];
   setExecutives: React.Dispatch<React.SetStateAction<Executive[]>>;
+  secretaries: Secretary[];
+  setSecretaries: React.Dispatch<React.SetStateAction<Secretary[]>>;
+  setEvents: React.Dispatch<React.SetStateAction<Event[]>>;
+  setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
+  setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
 const OrganizationForm: React.FC<{ organization: Partial<Organization>, onSave: (organization: Organization) => void, onCancel: () => void }> = ({ organization, onSave, onCancel }) => {
@@ -66,11 +74,21 @@ const DepartmentForm: React.FC<{ department: Partial<Department>, onSave: (depar
 };
 
 
-const OrganizationsView: React.FC<OrganizationsViewProps> = ({ organizations, setOrganizations, departments, setDepartments, executives, setExecutives }) => {
+const OrganizationsView: React.FC<OrganizationsViewProps> = ({ 
+    organizations, setOrganizations, 
+    departments, setDepartments, 
+    executives, setExecutives, 
+    secretaries, setSecretaries,
+    setEvents, setContacts, setExpenses, setTasks,
+    setUsers 
+}) => {
     const [isOrgModalOpen, setOrgModalOpen] = useState(false);
     const [editingOrganization, setEditingOrganization] = useState<Partial<Organization> | null>(null);
     const [isDeptModalOpen, setDeptModalOpen] = useState(false);
     const [editingDepartment, setEditingDepartment] = useState<Partial<Department> | null>(null);
+
+    const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
+    const [deptToDelete, setDeptToDelete] = useState<Department | null>(null);
 
     // Organization Handlers
     const handleAddOrganization = () => {
@@ -81,20 +99,61 @@ const OrganizationsView: React.FC<OrganizationsViewProps> = ({ organizations, se
         setEditingOrganization(organization);
         setOrgModalOpen(true);
     };
-    const handleDeleteOrganization = (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir esta organização? Todos os seus departamentos serão removidos e os executivos associados serão desvinculados.')) {
-            setOrganizations(orgs => orgs.filter(o => o.id !== id));
-            setDepartments(depts => depts.filter(d => d.organizationId !== id));
-            setExecutives(execs => execs.map(e => e.organizationId === id ? { ...e, organizationId: undefined, departmentId: undefined } : e));
-        }
+    const handleDeleteOrganization = (org: Organization) => {
+        setOrgToDelete(org);
+    };
+    const confirmDeleteOrganization = () => {
+        if (!orgToDelete) return;
+
+        const orgId = orgToDelete.id;
+
+        // 1. Find all executives belonging to this organization to cascade their deletion
+        const executivesToDelete = executives.filter(e => e.organizationId === orgId);
+        const executivesToDeleteIds = executivesToDelete.map(e => e.id);
+
+        // 2. Delete the organization
+        setOrganizations(orgs => orgs.filter(o => o.id !== orgId));
+
+        // 3. Delete all departments of the organization
+        setDepartments(depts => depts.filter(d => d.organizationId !== orgId));
+
+        // 4. Delete all related executives
+        setExecutives(execs => execs.filter(e => e.organizationId !== orgId));
+
+        // 5. Delete all data related to the deleted executives
+        setEvents(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+        setContacts(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+        setExpenses(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+        setTasks(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+
+        // 6. Unlink deleted executives from any secretaries
+        setSecretaries(secs => secs.map(sec => ({
+            ...sec,
+            executiveIds: sec.executiveIds.filter(execId => !executivesToDeleteIds.includes(execId))
+        })));
+
+        // 7. Delete all users (admin for the org, and users for all deleted executives)
+        setUsers(users => users.filter(u => {
+            if (u.organizationId === orgId) return false; // Remove org admin
+            if (u.executiveId && executivesToDeleteIds.includes(u.executiveId)) return false; // Remove executive users
+            return true;
+        }));
+
+        setOrgToDelete(null);
     };
     const handleSaveOrganization = (organization: Organization) => {
-        setOrganizations(orgs => {
-            if (editingOrganization && editingOrganization.id) {
-                return orgs.map(o => o.id === organization.id ? organization : o);
-            }
-            return [...orgs, organization];
-        });
+        if (editingOrganization && editingOrganization.id) {
+            setOrganizations(orgs => orgs.map(o => o.id === organization.id ? organization : o));
+            setUsers(users => users.map(u => u.organizationId === organization.id ? { ...u, fullName: `Admin ${organization.name}` } : u));
+        } else {
+            setOrganizations(orgs => [...orgs, organization]);
+            setUsers(users => [...users, {
+                id: `user_admin_${organization.id}`,
+                fullName: `Admin ${organization.name}`,
+                role: 'admin',
+                organizationId: organization.id
+            }]);
+        }
         setOrgModalOpen(false);
         setEditingOrganization(null);
     };
@@ -108,11 +167,15 @@ const OrganizationsView: React.FC<OrganizationsViewProps> = ({ organizations, se
         setEditingDepartment(department);
         setDeptModalOpen(true);
     };
-    const handleDeleteDepartment = (id: string) => {
-         if (window.confirm('Tem certeza que deseja excluir este departamento? Os executivos associados serão desvinculados.')) {
-            setDepartments(depts => depts.filter(d => d.id !== id));
-            setExecutives(execs => execs.map(e => e.departmentId === id ? { ...e, departmentId: undefined } : e));
-        }
+    const handleDeleteDepartment = (dept: Department) => {
+        setDeptToDelete(dept);
+    };
+    const confirmDeleteDepartment = () => {
+        if (!deptToDelete) return;
+        const id = deptToDelete.id;
+        setDepartments(depts => depts.filter(d => d.id !== id));
+        setExecutives(execs => execs.map(e => e.departmentId === id ? { ...e, departmentId: undefined } : e));
+        setDeptToDelete(null);
     };
     const handleSaveDepartment = (department: Department) => {
         setDepartments(depts => {
@@ -150,7 +213,7 @@ const OrganizationsView: React.FC<OrganizationsViewProps> = ({ organizations, se
                                     <button onClick={() => handleEditOrganization(org)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-100 transition" aria-label="Editar organização">
                                         <EditIcon />
                                     </button>
-                                    <button onClick={() => handleDeleteOrganization(org.id)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-100 transition" aria-label="Excluir organização">
+                                    <button onClick={() => handleDeleteOrganization(org)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-100 transition" aria-label="Excluir organização">
                                         <DeleteIcon />
                                     </button>
                                 </div>
@@ -164,7 +227,7 @@ const OrganizationsView: React.FC<OrganizationsViewProps> = ({ organizations, se
                                                 <p className="text-slate-700">{dept.name}</p>
                                                 <div className="flex items-center gap-1">
                                                     <button onClick={() => handleEditDepartment(dept)} className="p-1 text-slate-400 hover:text-indigo-600" aria-label="Editar departamento"><EditIcon /></button>
-                                                    <button onClick={() => handleDeleteDepartment(dept.id)} className="p-1 text-slate-400 hover:text-red-600" aria-label="Excluir departamento"><DeleteIcon /></button>
+                                                    <button onClick={() => handleDeleteDepartment(dept)} className="p-1 text-slate-400 hover:text-red-600" aria-label="Excluir departamento"><DeleteIcon /></button>
                                                 </div>
                                             </li>
                                         ))}
@@ -199,6 +262,26 @@ const OrganizationsView: React.FC<OrganizationsViewProps> = ({ organizations, se
                  <Modal title={editingDepartment?.id ? 'Editar Departamento' : 'Novo Departamento'} onClose={() => {setDeptModalOpen(false); setEditingDepartment(null)}}>
                     <DepartmentForm department={editingDepartment || {}} onSave={handleSaveDepartment} onCancel={() => { setDeptModalOpen(false); setEditingDepartment(null); }} />
                 </Modal>
+            )}
+
+            {orgToDelete && (
+                <ConfirmationModal
+                    isOpen={!!orgToDelete}
+                    onClose={() => setOrgToDelete(null)}
+                    onConfirm={confirmDeleteOrganization}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir a organização ${orgToDelete.name}? TODOS os seus dados (departamentos, executivos, atividades, etc) e usuários associados serão permanentemente removidos.`}
+                />
+            )}
+            
+            {deptToDelete && (
+                 <ConfirmationModal
+                    isOpen={!!deptToDelete}
+                    onClose={() => setDeptToDelete(null)}
+                    onConfirm={confirmDeleteDepartment}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir o departamento ${deptToDelete.name}? Os executivos associados serão desvinculados.`}
+                />
             )}
         </div>
     );

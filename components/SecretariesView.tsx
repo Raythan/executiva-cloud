@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Secretary, Executive } from '../types';
+import { Secretary, Executive, User } from '../types';
 import Modal from './Modal';
+import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon } from './Icons';
 
 interface SecretariesViewProps {
   secretaries: Secretary[];
   setSecretaries: React.Dispatch<React.SetStateAction<Secretary[]>>;
   executives: Executive[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
 const SecretaryForm: React.FC<{
@@ -75,9 +77,10 @@ const SecretaryForm: React.FC<{
     );
 };
 
-const SecretariesView: React.FC<SecretariesViewProps> = ({ secretaries, setSecretaries, executives }) => {
+const SecretariesView: React.FC<SecretariesViewProps> = ({ secretaries, setSecretaries, executives, setUsers }) => {
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingSecretary, setEditingSecretary] = useState<Partial<Secretary> | null>(null);
+    const [secretaryToDelete, setSecretaryToDelete] = useState<Secretary | null>(null);
 
     const handleAddSecretary = () => {
         setEditingSecretary({});
@@ -89,19 +92,31 @@ const SecretariesView: React.FC<SecretariesViewProps> = ({ secretaries, setSecre
         setModalOpen(true);
     };
 
-    const handleDeleteSecretary = (id: string) => {
-        if (window.confirm('Tem certeza que deseja excluir esta secretária?')) {
-            setSecretaries(prev => prev.filter(s => s.id !== id));
+    const handleDeleteSecretary = (secretary: Secretary) => {
+        setSecretaryToDelete(secretary);
+    };
+    
+    const confirmDelete = () => {
+        if(secretaryToDelete) {
+            setSecretaries(prev => prev.filter(s => s.id !== secretaryToDelete.id));
+            setUsers(prev => prev.filter(u => u.secretaryId !== secretaryToDelete.id));
+            setSecretaryToDelete(null);
         }
     };
     
     const handleSaveSecretary = (secretary: Secretary) => {
-        setSecretaries(prev => {
-            if (editingSecretary && editingSecretary.id) {
-                return prev.map(s => s.id === secretary.id ? secretary : s);
-            }
-            return [...prev, secretary];
-        });
+        if (editingSecretary && editingSecretary.id) {
+            setSecretaries(prev => prev.map(s => s.id === secretary.id ? secretary : s));
+            setUsers(users => users.map(u => u.secretaryId === secretary.id ? { ...u, fullName: secretary.fullName } : u));
+        } else {
+            setSecretaries(prev => [...prev, secretary]);
+            setUsers(users => [...users, {
+                id: `user_sec_${secretary.id}`,
+                fullName: secretary.fullName,
+                role: 'secretary',
+                secretaryId: secretary.id,
+            }]);
+        }
         setModalOpen(false);
         setEditingSecretary(null);
     };
@@ -148,7 +163,7 @@ const SecretariesView: React.FC<SecretariesViewProps> = ({ secretaries, setSecre
                                             <button onClick={() => handleEditSecretary(sec)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar secretária">
                                                 <EditIcon />
                                             </button>
-                                            <button onClick={() => handleDeleteSecretary(sec.id)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir secretária">
+                                            <button onClick={() => handleDeleteSecretary(sec)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir secretária">
                                                 <DeleteIcon />
                                             </button>
                                         </div>
@@ -170,6 +185,16 @@ const SecretariesView: React.FC<SecretariesViewProps> = ({ secretaries, setSecre
                         executives={executives}
                     />
                 </Modal>
+            )}
+
+            {secretaryToDelete && (
+                 <ConfirmationModal
+                    isOpen={!!secretaryToDelete}
+                    onClose={() => setSecretaryToDelete(null)}
+                    onConfirm={confirmDelete}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir a secretária ${secretaryToDelete.fullName}? O usuário associado também será removido.`}
+                />
             )}
         </div>
     );

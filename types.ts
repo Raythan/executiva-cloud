@@ -39,7 +39,7 @@ export interface User {
 }
 
 export interface EventType {
-  id: string; // UUID
+  id:string; // UUID
   name: string;
   color: string; // color_hex
 }
@@ -106,7 +106,7 @@ export interface Expense {
 }
 
 // Views correspond to navigation items in the sidebar
-export type View = 'dashboard' | 'executives' | 'agenda' | 'contacts' | 'expenses' | 'organizations' | 'settings' | 'tasks' | 'secretaries';
+export type View = 'dashboard' | 'executives' | 'agenda' | 'contacts' | 'expenses' | 'organizations' | 'settings' | 'tasks' | 'secretaries' | 'reports';
 
 export enum Priority {
   High = 'Alta',

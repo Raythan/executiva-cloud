@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Task, Priority, Status, RecurrenceRule } from '../types';
 import Modal from './Modal';
+import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon, RecurrenceIcon } from './Icons';
 
 interface TasksViewProps {
@@ -234,6 +235,7 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+    const [showRecurrenceDeleteModal, setShowRecurrenceDeleteModal] = useState(false);
     const [filter, setFilter] = useState<Status | 'all'>('all');
 
     const handleAddTask = () => {
@@ -247,16 +249,19 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
     };
 
     const handleDeleteClick = (task: Task) => {
+        setTaskToDelete(task);
         if (task.recurrenceId) {
-            setTaskToDelete(task);
-        } else {
-            if (window.confirm('Tem certeza que deseja excluir esta tarefa?')) {
-                setTasks(allTasks => allTasks.filter(t => t.id !== task.id));
-            }
+            setShowRecurrenceDeleteModal(true);
         }
     };
     
-    const executeDelete = (type: 'one' | 'all' | 'future') => {
+    const confirmDelete = () => {
+        if (!taskToDelete) return;
+        setTasks(allTasks => allTasks.filter(t => t.id !== taskToDelete.id));
+        setTaskToDelete(null);
+    };
+    
+    const executeRecurrenceDelete = (type: 'one' | 'all' | 'future') => {
         if (!taskToDelete) return;
 
         setTasks(allTasks => {
@@ -278,35 +283,45 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
             return allTasks;
         });
 
+        setShowRecurrenceDeleteModal(false);
         setTaskToDelete(null);
     };
 
     const handleSaveTask = (taskData: Partial<Task>, recurrenceRule: RecurrenceRule | null) => {
-        const fullTaskData = { ...taskData, executiveId: executiveId };
-        
-        if (recurrenceRule) {
-            // It's a recurring task (new or edited)
-            const recurrenceId = fullTaskData.recurrenceId || `recur_${new Date().getTime()}`;
-            const newSeries = generateRecurringTasks(fullTaskData, recurrenceRule, recurrenceId);
-            
-            setTasks(allTasks => {
-                // Remove all old tasks from the series being edited, then add the new ones
-                const otherTasks = allTasks.filter(t => t.recurrenceId !== recurrenceId);
-                return [...otherTasks, ...newSeries];
-            });
+        const fullTaskData = { ...taskData, executiveId };
 
-        } else {
-            // It's a single, non-recurring task
-            if (fullTaskData.id && !fullTaskData.recurrenceId) { // Check it wasn't recurring before
-                setTasks(allTasks => allTasks.map(t => (t.id === fullTaskData.id ? (fullTaskData as Task) : t)));
+        setTasks(allTasks => {
+            // Find the original task being edited to check if it was part of a series.
+            const originalTask = editingTask?.id ? allTasks.find(t => t.id === editingTask.id) : null;
+            const originalRecurrenceId = originalTask?.recurrenceId;
+
+            // Start with a base set of tasks, removing the old series if it exists.
+            let baseTasks = originalRecurrenceId
+                ? allTasks.filter(t => t.recurrenceId !== originalRecurrenceId)
+                : allTasks;
+
+            if (recurrenceRule) {
+                // If it's a recurring task (new or an edited series).
+                // Use the old recurrence ID to maintain consistency, or create a new one.
+                const recurrenceId = originalRecurrenceId || `recur_${new Date().getTime()}`;
+                const newSeries = generateRecurringTasks(fullTaskData, recurrenceRule, recurrenceId);
+                return [...baseTasks, ...newSeries];
             } else {
-                 // This case should be handled better: what if a recurring task is made non-recurring?
-                 // For now, we assume this is a new single task.
-                const newId = `single_${new Date().getTime()}`;
-                setTasks(allTasks => [...allTasks, { ...(fullTaskData as Task), id: fullTaskData.id || newId }]);
+                // If it's a single, non-recurring task.
+                if (fullTaskData.id) {
+                    // This is an edit. Ensure the old version (if not part of the deleted series) is removed.
+                    const tasksWithoutOld = baseTasks.filter(t => t.id !== fullTaskData.id);
+                    // Add the updated task, ensuring recurrence properties are cleared.
+                    const updatedTask = { ...fullTaskData, recurrenceId: undefined, recurrence: undefined } as Task;
+                    return [...tasksWithoutOld, updatedTask];
+                } else {
+                    // This is a new single task.
+                    const newId = `single_${new Date().getTime()}`;
+                    return [...baseTasks, { ...fullTaskData, id: newId, recurrenceId: undefined, recurrence: undefined } as Task];
+                }
             }
-        }
-        
+        });
+
         setModalOpen(false);
         setEditingTask(null);
     };
@@ -358,9 +373,9 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
             <div className="bg-white p-4 rounded-xl shadow-md">
                 <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 mb-3">
                     <span className="text-sm font-medium text-slate-600">Filtrar por status:</span>
-                    {(['all', ...Object.values(Status)] as const).map(status => (
-                        <button key={status} onClick={() => setFilter(status)} className={`px-3 py-1 text-sm rounded-full transition ${filter === status ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                            {status === 'all' ? 'Todos' : status}
+                    {(['all', ...Object.values(Status)] as const).map(statusValue => (
+                        <button key={statusValue} onClick={() => setFilter(statusValue)} className={`px-3 py-1 text-sm rounded-full transition ${filter === statusValue ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                            {statusValue === 'all' ? 'Todos' : statusValue}
                         </button>
                     ))}
                 </div>
@@ -380,7 +395,7 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
                                 <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
                                     <td className="p-3 font-medium text-slate-800">
                                         <div className="flex items-center gap-2">
-                                            {task.recurrenceId && <span className="text-slate-400" title="Tarefa recorrente"><RecurrenceIcon/></span>}
+                                            {task.recurrenceId && <span className="text-slate-400" title="Tarefa Recorrente"><RecurrenceIcon/></span>}
                                             <span>{task.title}</span>
                                         </div>
                                         <p className="font-normal text-sm text-slate-500 md:hidden">{task.priority} - {formatDate(task.dueDate)}</p>
@@ -394,10 +409,10 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
                                     </td>
                                     <td className="p-3 text-right">
                                         <div className="flex justify-end items-center gap-2">
-                                            <button onClick={() => handleEditTask(task)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar tarefa">
+                                            <button onClick={() => handleEditTask(task)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar">
                                                 <EditIcon />
                                             </button>
-                                            <button onClick={() => handleDeleteClick(task)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir tarefa">
+                                            <button onClick={() => handleDeleteClick(task)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir">
                                                 <DeleteIcon />
                                             </button>
                                         </div>
@@ -416,17 +431,27 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
                 </Modal>
             )}
 
-            {taskToDelete && (
-                <Modal title="Excluir Tarefa Recorrente" onClose={() => setTaskToDelete(null)}>
+            {showRecurrenceDeleteModal && (
+                <Modal title="Excluir Tarefa Recorrente" onClose={() => { setShowRecurrenceDeleteModal(false); setTaskToDelete(null); }}>
                     <div className="space-y-4">
-                        <p className="text-sm text-slate-600">Este é um evento recorrente. O que você gostaria de excluir?</p>
+                        <p className="text-sm text-slate-600">Esta é uma tarefa recorrente. O que você gostaria de excluir?</p>
                         <div className="flex flex-col space-y-3">
-                             <button onClick={() => executeDelete('one')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Apenas esta ocorrência</button>
-                             <button onClick={() => executeDelete('future')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Esta e as futuras ocorrências</button>
-                             <button onClick={() => executeDelete('all')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Toda a série</button>
+                             <button onClick={() => executeRecurrenceDelete('one')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Apenas esta ocorrência</button>
+                             <button onClick={() => executeRecurrenceDelete('future')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Esta e as futuras ocorrências</button>
+                             <button onClick={() => executeRecurrenceDelete('all')} className="w-full text-left px-4 py-2 bg-slate-100 text-slate-800 rounded-md hover:bg-slate-200 transition">Toda a série</button>
                         </div>
                     </div>
                 </Modal>
+            )}
+
+            {taskToDelete && !taskToDelete.recurrenceId && (
+                 <ConfirmationModal
+                    isOpen={!!taskToDelete}
+                    onClose={() => setTaskToDelete(null)}
+                    onConfirm={confirmDelete}
+                    title="Confirmar Exclusão"
+                    message="Tem certeza que deseja excluir esta tarefa?"
+                />
             )}
         </div>
     );

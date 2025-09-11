@@ -11,6 +11,9 @@ import ExpensesView from './components/ExpensesView';
 import SettingsView from './components/SettingsView';
 import TasksView from './components/TasksView';
 import SecretariesView from './components/SecretariesView';
+import LoginView from './components/LoginView';
+import ReportsView from './components/ReportsView';
+import UserMenu from './components/UserMenu';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -40,11 +43,28 @@ const App: React.FC = () => {
   ], []);
   
   const initialUsers: User[] = useMemo(() => [
-    { id: 'user1', fullName: 'Master User', role: 'master' },
-    { id: 'user2', fullName: 'Admin Tech Solutions', role: 'admin', organizationId: 'org1' },
-    { id: 'user3', fullName: 'Carlos Silva (Executivo)', role: 'executive', executiveId: 'exec1' },
-    { id: 'user4', fullName: 'Sofia Ribeiro (Secretária)', role: 'secretary', secretaryId: 'sec1' },
-  ], []);
+    // Static master user
+    { id: 'user_master', fullName: 'Master User', role: 'master' },
+    // Dynamic users from initial data
+    ...initialOrganizations.map(org => ({
+      id: `user_admin_${org.id}`,
+      fullName: `Admin ${org.name}`,
+      role: 'admin' as UserRole,
+      organizationId: org.id,
+    })),
+    ...initialExecutives.map(e => ({
+      id: `user_exec_${e.id}`,
+      fullName: e.fullName,
+      role: 'executive' as UserRole,
+      executiveId: e.id,
+    })),
+    ...initialSecretaries.map(s => ({
+      id: `user_sec_${s.id}`,
+      fullName: s.fullName,
+      role: 'secretary' as UserRole,
+      secretaryId: s.id,
+    })),
+  ], [initialOrganizations, initialExecutives, initialSecretaries]);
 
   const initialEventTypes: EventType[] = useMemo(() => [
       { id: 'et1', name: 'Reunião Diretoria', color: '#ef4444' }, // red-500
@@ -106,7 +126,7 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useLocalStorage<Task[]>('tasks', initialTasks);
   const [notifiedEventIds, setNotifiedEventIds] = useState<Set<string>>(new Set());
 
-  const [currentUser, setCurrentUser] = useLocalStorage<User>('currentUser', users[0]);
+  const [currentUser, setCurrentUser] = useLocalStorage<User | null>('currentUser', null);
   const [selectedExecutiveId, setSelectedExecutiveId] = useLocalStorage<string | null>('selectedExecutiveId', null);
 
   // --- USER PERMISSIONS & DATA FILTERING ---
@@ -130,9 +150,9 @@ const App: React.FC = () => {
   
   // Effect to manage selected executive based on current user
   useEffect(() => {
-    if (currentUser.role === 'executive') {
+    if (currentUser?.role === 'executive') {
       setSelectedExecutiveId(currentUser.executiveId || null);
-    } else {
+    } else if (currentUser) {
       // If the current selection is no longer valid, reset it
       const isSelectionValid = visibleExecutives.some(e => e.id === selectedExecutiveId);
       if (!isSelectionValid) {
@@ -191,8 +211,22 @@ const App: React.FC = () => {
   const filteredExpenses = useMemo(() => expenses.filter(ex => ex.executiveId === selectedExecutiveId), [expenses, selectedExecutiveId]);
   const filteredTasks = useMemo(() => tasks.filter(t => t.executiveId === selectedExecutiveId), [tasks, selectedExecutiveId]);
 
+  const viewTitles: Record<View, string> = {
+    dashboard: 'Painel',
+    organizations: 'Organizações',
+    executives: 'Executivos',
+    secretaries: 'Secretárias',
+    agenda: 'Agenda',
+    contacts: 'Contatos',
+    expenses: 'Despesas',
+    tasks: 'Tarefas',
+    reports: 'Relatórios',
+    settings: 'Configurações',
+  };
+
 
   const renderView = () => {
+    if (!currentUser) return null;
     // Check if an executive is selected for views that require it
     if (['agenda', 'contacts', 'expenses', 'tasks'].includes(currentView) && !selectedExecutiveId && currentUser.role !== 'executive') {
       return (
@@ -207,11 +241,33 @@ const App: React.FC = () => {
       case 'dashboard':
         return <Dashboard executives={visibleExecutives} events={events} expenses={expenses} selectedExecutive={selectedExecutive} />;
       case 'executives':
-        return <ExecutivesView executives={visibleExecutives} setExecutives={setExecutives} organizations={organizations} departments={departments} />;
+        return <ExecutivesView 
+                  executives={visibleExecutives} 
+                  setExecutives={setExecutives} 
+                  organizations={organizations} 
+                  departments={departments}
+                  secretaries={secretaries}
+                  setSecretaries={setSecretaries}
+                  setEvents={setEvents}
+                  setContacts={setContacts}
+                  setExpenses={setExpenses}
+                  setTasks={setTasks}
+                  setUsers={setUsers}
+                />;
       case 'organizations':
-        return <OrganizationsView organizations={organizations} setOrganizations={setOrganizations} departments={departments} setDepartments={setDepartments} executives={executives} setExecutives={setExecutives} />;
+        return <OrganizationsView 
+                  organizations={organizations} setOrganizations={setOrganizations} 
+                  departments={departments} setDepartments={setDepartments} 
+                  executives={executives} setExecutives={setExecutives} 
+                  secretaries={secretaries} setSecretaries={setSecretaries}
+                  setEvents={setEvents}
+                  setContacts={setContacts}
+                  setExpenses={setExpenses}
+                  setTasks={setTasks}
+                  setUsers={setUsers} 
+                />;
       case 'secretaries':
-        return <SecretariesView secretaries={secretaries} setSecretaries={setSecretaries} executives={executives} />;
+        return <SecretariesView secretaries={secretaries} setSecretaries={setSecretaries} executives={executives} setUsers={setUsers} />;
       case 'agenda':
         return <AgendaView events={filteredEvents} setEvents={setEvents} eventTypes={eventTypes} executiveId={selectedExecutiveId!} />;
       case 'contacts':
@@ -220,6 +276,8 @@ const App: React.FC = () => {
         return <ExpensesView expenses={filteredExpenses} setExpenses={setExpenses} executiveId={selectedExecutiveId!} />;
       case 'tasks':
         return <TasksView tasks={filteredTasks} setTasks={setTasks} executiveId={selectedExecutiveId!} />;
+      case 'reports':
+        return <ReportsView executives={executives} events={events} expenses={expenses} tasks={tasks} contacts={contacts} />;
       case 'settings':
         return <SettingsView eventTypes={eventTypes} setEventTypes={setEventTypes} contactTypes={contactTypes} setContactTypes={setContactTypes} />;
       default:
@@ -228,45 +286,31 @@ const App: React.FC = () => {
   };
 
   const BurgerIcon = () => (
-    <svg xmlns="http://www.w.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
     </svg>
   );
+
+  if (!currentUser) {
+    return <LoginView users={users} onLogin={setCurrentUser} />;
+  }
 
   return (
     <div className="flex h-screen bg-slate-100 text-slate-800">
       <Sidebar currentUser={currentUser} currentView={currentView} setCurrentView={setCurrentView} isOpen={isSidebarOpen} setOpen={setSidebarOpen} />
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white/60 backdrop-blur-md border-b border-slate-200 p-4 flex items-center justify-between shadow-sm z-10 flex-wrap gap-2">
+        <header className="bg-white/60 backdrop-blur-md border-b border-slate-200 p-4 flex items-center justify-between shadow-sm z-10 gap-4">
            <div className="flex items-center gap-4">
              <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="lg:hidden text-slate-600 hover:text-slate-900" aria-label="Abrir menu">
                <BurgerIcon />
              </button>
              <h1 className="text-xl font-bold text-slate-700 capitalize hidden sm:block">
-               {currentView.replace(/_/g, ' ')}
+               {viewTitles[currentView]}
              </h1>
            </div>
            
-           <div className="flex items-center gap-4 flex-1 justify-end">
-              <div className="flex items-center gap-2 text-sm">
-                <label htmlFor="user-select" className="font-medium text-slate-600">Logado como:</label>
-                <select
-                  id="user-select"
-                  aria-label="Selecionar Usuário"
-                  value={currentUser?.id || ''}
-                  onChange={e => {
-                    const selectedUser = users.find(u => u.id === e.target.value);
-                    if (selectedUser) setCurrentUser(selectedUser);
-                  }}
-                  className="px-2 py-1 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition"
-                >
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>{user.fullName}</option>
-                  ))}
-                </select>
-              </div>
-
-             <div className="flex-1 max-w-xs md:max-w-sm">
+           <div className="flex items-center gap-4">
+             <div className="w-full sm:max-w-xs md:max-w-sm">
                 <select
                   aria-label="Selecionar Executivo"
                   value={selectedExecutiveId || ''}
@@ -287,6 +331,8 @@ const App: React.FC = () => {
                   })}
                 </select>
              </div>
+
+             <UserMenu user={currentUser} onLogout={() => setCurrentUser(null)} />
            </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">

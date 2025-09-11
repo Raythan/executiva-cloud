@@ -40,7 +40,7 @@ const Dashboard: React.FC<DashboardProps> = ({ executives, events, expenses, sel
     <div className="space-y-8 animate-fade-in">
       <header>
         <h2 className="text-3xl font-bold text-slate-800">
-          Painel de Controle {selectedExecutive ? `- ${selectedExecutive.fullName}` : ''}
+          {selectedExecutive ? `Painel de Controle - ${selectedExecutive.fullName}` : 'Painel de Controle'}
         </h2>
         <p className="text-slate-500 mt-1">
           {selectedExecutive ? 'Resumo das atividades e informações do executivo.' : 'Visão geral da sua operação.'}
