@@ -1,105 +1,105 @@
-import React, { useState } from 'react';
-import { EventType, ContactType } from '../types';
+import React, { useState, useEffect } from 'react';
+import { AllDataBackup } from '../types';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
-import { EditIcon, DeleteIcon, PlusIcon } from './Icons';
-
-// --- Event Type Management ---
-const EventTypeForm: React.FC<{ eventType: Partial<EventType>, onSave: (et: EventType) => void, onCancel: () => void }> = ({ eventType, onSave, onCancel }) => {
-    const [name, setName] = useState(eventType.name || '');
-    const [color, setColor] = useState(eventType.color || '#3b82f6');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!name) return;
-        onSave({ id: eventType.id || new Date().toISOString(), name, color });
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label htmlFor="et-name" className="block text-sm font-medium text-slate-700">Nome do Tipo</label>
-                <input type="text" id="et-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-            </div>
-            <div>
-                <label htmlFor="et-color" className="block text-sm font-medium text-slate-700">Cor</label>
-                <div className="flex items-center gap-2">
-                    <input type="color" id="et-color" value={color} onChange={e => setColor(e.target.value)} className="p-1 h-10 w-10 block bg-white border border-slate-300 rounded-md cursor-pointer" />
-                    <input type="text" value={color} onChange={e => setColor(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                </div>
-            </div>
-            <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar</button>
-            </div>
-        </form>
-    );
-};
-
-// --- Contact Type Management ---
-const ContactTypeForm: React.FC<{ contactType: Partial<ContactType>, onSave: (ct: ContactType) => void, onCancel: () => void }> = ({ contactType, onSave, onCancel }) => {
-    const [name, setName] = useState(contactType.name || '');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!name) return;
-        onSave({ id: contactType.id || new Date().toISOString(), name });
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label htmlFor="ct-name" className="block text-sm font-medium text-slate-700">Nome do Tipo</label>
-                <input type="text" id="ct-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-            </div>
-            <div className="flex justify-end space-x-3 pt-4">
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar</button>
-            </div>
-        </form>
-    );
-};
-
+import { DownloadIcon, UploadIcon, CheckCircleIcon, ExclamationTriangleIcon } from './Icons';
 
 // --- Main Settings View ---
 interface SettingsViewProps {
-  eventTypes: EventType[];
-  setEventTypes: React.Dispatch<React.SetStateAction<EventType[]>>;
-  contactTypes: ContactType[];
-  setContactTypes: React.Dispatch<React.SetStateAction<ContactType[]>>;
+  allData: Omit<AllDataBackup, 'version'>;
+  setAllData: { [K in keyof Omit<AllDataBackup, 'version'> as `set${Capitalize<K>}`]: React.Dispatch<React.SetStateAction<AllDataBackup[K]>> };
 }
 
-const SettingsView: React.FC<SettingsViewProps> = ({ eventTypes, setEventTypes, contactTypes, setContactTypes }) => {
-    const [isEventTypeModalOpen, setEventTypeModalOpen] = useState(false);
-    const [editingEventType, setEditingEventType] = useState<Partial<EventType> | null>(null);
-    const [eventTypeToDelete, setEventTypeToDelete] = useState<EventType | null>(null);
+const SettingsView: React.FC<SettingsViewProps> = ({ allData, setAllData }) => {
+    const appVersion = '1.3.0'; // Should match the one in Sidebar.tsx
+    
+    const [fileToImport, setFileToImport] = useState<File | null>(null);
+    const [isImportConfirmOpen, setImportConfirmOpen] = useState(false);
+    const [dataToImport, setDataToImport] = useState<AllDataBackup | null>(null);
+    const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    
+    useEffect(() => {
+        if (importMessage) {
+            const timer = setTimeout(() => setImportMessage(null), 5000); // Hide message after 5 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [importMessage]);
 
-    const [isContactTypeModalOpen, setContactTypeModalOpen] = useState(false);
-    const [editingContactType, setEditingContactType] = useState<Partial<ContactType> | null>(null);
-    const [contactTypeToDelete, setContactTypeToDelete] = useState<ContactType | null>(null);
 
-    // Event Type Handlers
-    const handleSaveEventType = (eventType: EventType) => {
-        setEventTypes(prev => editingEventType?.id ? prev.map(et => et.id === eventType.id ? eventType : et) : [...prev, eventType]);
-        setEventTypeModalOpen(false);
-        setEditingEventType(null);
-    };
-    const confirmDeleteEventType = () => {
-        if (!eventTypeToDelete) return;
-        setEventTypes(prev => prev.filter(et => et.id !== eventTypeToDelete.id));
-        setEventTypeToDelete(null);
+    // Data Management Handlers
+    const handleExportData = () => {
+        const dataToExport: AllDataBackup = { version: appVersion, ...allData };
+        const jsonData = JSON.stringify(dataToExport, null, 2);
+        const blob = new Blob([jsonData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `executiva_cloud_backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
-    // Contact Type Handlers
-    const handleSaveContactType = (contactType: ContactType) => {
-        setContactTypes(prev => editingContactType?.id ? prev.map(ct => ct.id === contactType.id ? contactType : ct) : [...prev, contactType]);
-        setContactTypeModalOpen(false);
-        setEditingContactType(null);
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setImportMessage(null);
+        if (e.target.files && e.target.files.length > 0) {
+            setFileToImport(e.target.files[0]);
+        }
     };
-    const confirmDeleteContactType = () => {
-        if (!contactTypeToDelete) return;
-        setContactTypes(prev => prev.filter(ct => ct.id !== contactTypeToDelete.id));
-        setContactTypeToDelete(null);
+
+    const handleImportClick = () => {
+        if (!fileToImport) return;
+        setImportMessage(null);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const text = e.target?.result;
+                if (typeof text !== 'string') throw new Error("File content is not a string.");
+                const parsedData = JSON.parse(text) as AllDataBackup;
+                
+                if (parsedData.version !== appVersion) {
+                    throw new Error("Versão do arquivo de backup incompatível.");
+                }
+
+                const requiredKeys: (keyof AllDataBackup)[] = ['organizations', 'departments', 'executives', 'secretaries', 'users', 'events', 'tasks', 'contacts', 'expenses', 'eventTypes', 'contactTypes'];
+                const hasAllKeys = requiredKeys.every(key => Array.isArray(parsedData[key]));
+
+                if (!hasAllKeys) {
+                    throw new Error("O arquivo de backup é inválido ou está corrompido.");
+                }
+
+                setDataToImport(parsedData);
+                setImportConfirmOpen(true);
+            } catch (error) {
+                setImportMessage({ type: 'error', text: 'O arquivo de backup é imcompatível com a versão atual ou está corrompido.' });
+                setDataToImport(null);
+            }
+        };
+        reader.onerror = () => {
+             setImportMessage({ type: 'error', text: 'Erro ao tentar ler o arquivo selecionado.' });
+        }
+        reader.readAsText(fileToImport);
+    };
+
+    const confirmImport = () => {
+        if (!dataToImport) return;
+        setAllData.setOrganizations(dataToImport.organizations);
+        setAllData.setDepartments(dataToImport.departments);
+        setAllData.setExecutives(dataToImport.executives);
+        setAllData.setSecretaries(dataToImport.secretaries);
+        setAllData.setUsers(dataToImport.users);
+        setAllData.setEventTypes(dataToImport.eventTypes);
+        setAllData.setEvents(dataToImport.events);
+        setAllData.setContactTypes(dataToImport.contactTypes);
+        setAllData.setContacts(dataToImport.contacts);
+        setAllData.setExpenses(dataToImport.expenses);
+        setAllData.setTasks(dataToImport.tasks);
+        
+        setImportConfirmOpen(false);
+        setDataToImport(null);
+        setFileToImport(null);
+        setImportMessage({ type: 'success', text: 'Dados importados com sucesso!' });
     };
 
 
@@ -107,85 +107,55 @@ const SettingsView: React.FC<SettingsViewProps> = ({ eventTypes, setEventTypes, 
         <div className="space-y-8 animate-fade-in">
              <header>
                 <h2 className="text-3xl font-bold text-slate-800">Configurações</h2>
-                <p className="text-slate-500 mt-1">Personalize as categorias e tipos para organizar seu trabalho.</p>
+                <p className="text-slate-500 mt-1">Gerencie os dados da sua aplicação.</p>
             </header>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Event Types Panel */}
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold text-slate-700">Tipos de Evento</h3>
-                        <button onClick={() => { setEditingEventType({}); setEventTypeModalOpen(true); }} className="flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition text-sm">
-                            <PlusIcon /> Adicionar
-                        </button>
-                    </div>
-                    <ul className="space-y-2">
-                        {eventTypes.map(et => (
-                            <li key={et.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <span className="w-4 h-4 rounded-full" style={{ backgroundColor: et.color }}></span>
-                                    <span className="font-medium text-slate-800">{et.name}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => { setEditingEventType(et); setEventTypeModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600"><EditIcon /></button>
-                                    <button onClick={() => setEventTypeToDelete(et)} className="p-2 text-slate-400 hover:text-red-600"><DeleteIcon /></button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
 
-                {/* Contact Types Panel */}
-                 <div className="bg-white p-6 rounded-xl shadow-md">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold text-slate-700">Tipos de Contato</h3>
-                        <button onClick={() => { setEditingContactType({}); setContactTypeModalOpen(true); }} className="flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition text-sm">
-                            <PlusIcon /> Adicionar
+            {/* Data Management Panel */}
+            <div className="bg-white p-6 rounded-xl shadow-md">
+                <h3 className="text-xl font-bold text-slate-700 mb-4 border-b border-slate-200 pb-3">Gerenciamento de Dados</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Export Section */}
+                    <div>
+                        <h4 className="font-semibold text-slate-800">Exportar Dados</h4>
+                        <p className="text-sm text-slate-500 mt-1 mb-4">Salve todos os dados da aplicação em um único arquivo de backup. Guarde este arquivo em um local seguro.</p>
+                        <button onClick={handleExportData} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 transition">
+                            <DownloadIcon />
+                            Exportar Dados
                         </button>
                     </div>
-                    <ul className="space-y-2">
-                        {contactTypes.map(ct => (
-                           <li key={ct.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                <span className="font-medium text-slate-800">{ct.name}</span>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => { setEditingContactType(ct); setContactTypeModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600"><EditIcon /></button>
-                                    <button onClick={() => setContactTypeToDelete(ct)} className="p-2 text-slate-400 hover:text-red-600"><DeleteIcon /></button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
+                    {/* Import Section */}
+                    <div>
+                        <h4 className="font-semibold text-slate-800">Importar Dados</h4>
+                        <p className="text-sm text-slate-500 mt-1 mb-4">Importe dados de um arquivo de backup. <strong className="text-red-600">Atenção:</strong> Isso substituirá todos os dados atuais.</p>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="file"
+                                accept=".json"
+                                onChange={handleFileChange}
+                                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+                            />
+                             <button onClick={handleImportClick} disabled={!fileToImport} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md shadow-sm hover:bg-green-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed flex-shrink-0">
+                                <UploadIcon />
+                                Importar
+                            </button>
+                        </div>
+                        {importMessage && (
+                            <div className={`mt-4 p-3 rounded-md flex items-center gap-3 text-sm animate-fade-in-fast ${importMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {importMessage.type === 'success' ? <CheckCircleIcon /> : <ExclamationTriangleIcon />}
+                                <span>{importMessage.text}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {isEventTypeModalOpen && (
-                <Modal title={editingEventType?.id ? 'Editar Tipo de Evento' : 'Novo Tipo de Evento'} onClose={() => setEventTypeModalOpen(false)}>
-                    <EventTypeForm eventType={editingEventType || {}} onSave={handleSaveEventType} onCancel={() => { setEventTypeModalOpen(false); setEditingEventType(null); }} />
-                </Modal>
-            )}
-
-            {isContactTypeModalOpen && (
-                <Modal title={editingContactType?.id ? 'Editar Tipo de Contato' : 'Novo Tipo de Contato'} onClose={() => setContactTypeModalOpen(false)}>
-                    <ContactTypeForm contactType={editingContactType || {}} onSave={handleSaveContactType} onCancel={() => { setContactTypeModalOpen(false); setEditingContactType(null); }} />
-                </Modal>
-            )}
-
-            {eventTypeToDelete && (
-                <ConfirmationModal
-                    isOpen={!!eventTypeToDelete}
-                    onClose={() => setEventTypeToDelete(null)}
-                    onConfirm={confirmDeleteEventType}
-                    title="Confirmar Exclusão"
-                    message={`Tem certeza que deseja excluir o tipo de evento "${eventTypeToDelete.name}"?`}
-                />
-            )}
-
-            {contactTypeToDelete && (
+            {isImportConfirmOpen && (
                  <ConfirmationModal
-                    isOpen={!!contactTypeToDelete}
-                    onClose={() => setContactTypeToDelete(null)}
-                    onConfirm={confirmDeleteContactType}
-                    title="Confirmar Exclusão"
-                    message={`Tem certeza que deseja excluir o tipo de contato "${contactTypeToDelete.name}"?`}
+                    isOpen={isImportConfirmOpen}
+                    onClose={() => setImportConfirmOpen(false)}
+                    onConfirm={confirmImport}
+                    title="Confirmar Importação de Dados"
+                    message="Tem certeza que deseja importar este arquivo? Todos os dados atuais na aplicação serão substituídos permanentemente. Esta ação não pode ser desfeita."
                 />
             )}
         </div>

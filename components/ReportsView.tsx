@@ -18,12 +18,17 @@ type ReportData = {
     'Detalhe 2'?: string | number;
 };
 
+// Internal type to hold a sortable date
+type ReportDataInternal = ReportData & { sortDate: Date };
+
 const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses, tasks, contacts }) => {
     const [selectedExecIds, setSelectedExecIds] = useState<string[]>([]);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [dataTypes, setDataTypes] = useState({ events: true, expenses: true, tasks: true, contacts: true });
-    const [report, setReport] = useState<ReportData[]>([]);
+    
+    const [fullReport, setFullReport] = useState<ReportData[]>([]);
+    const [displayReport, setDisplayReport] = useState<ReportData[]>([]);
     const [reportGenerated, setReportGenerated] = useState(false);
 
     const dataTypeLabels: { [key: string]: string } = {
@@ -55,7 +60,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
         const sDate = startDate ? new Date(startDate + 'T00:00:00') : null;
         const eDate = endDate ? new Date(endDate + 'T23:59:59') : null;
 
-        let generatedData: ReportData[] = [];
+        let generatedData: ReportDataInternal[] = [];
 
         // Process Events
         if (dataTypes.events) {
@@ -75,7 +80,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                         'Data': new Date(e.startTime).toLocaleString('pt-BR'),
                         'Descrição/Título': e.title,
                         'Detalhe 1': `Local: ${e.location || 'N/A'}`,
-                        'Detalhe 2': `Duração: ${((new Date(e.endTime).getTime() - new Date(e.startTime).getTime()) / 60000)} min`
+                        'Detalhe 2': `Duração: ${((new Date(e.endTime).getTime() - new Date(e.startTime).getTime()) / 60000)} min`,
+                        sortDate: new Date(e.startTime)
                     });
                 });
         }
@@ -98,7 +104,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                         'Data': new Date(e.expenseDate + 'T00:00:00').toLocaleDateString('pt-BR'),
                         'Descrição/Título': e.description,
                         'Detalhe 1': `Valor: ${e.amount.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`,
-                        'Detalhe 2': `Status: ${e.status}`
+                        'Detalhe 2': `Status: ${e.status}`,
+                        sortDate: new Date(e.expenseDate + 'T00:00:00')
                     });
                 });
         }
@@ -121,7 +128,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                         'Data': new Date(t.dueDate + 'T00:00:00').toLocaleDateString('pt-BR'),
                         'Descrição/Título': t.title,
                         'Detalhe 1': `Prioridade: ${t.priority}`,
-                        'Detalhe 2': `Status: ${t.status}`
+                        'Detalhe 2': `Status: ${t.status}`,
+                        sortDate: new Date(t.dueDate + 'T00:00:00')
                     });
                 });
         }
@@ -138,13 +146,20 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                         'Data': '-',
                         'Descrição/Título': c.fullName,
                         'Detalhe 1': `Empresa: ${c.company || 'N/A'}`,
-                        'Detalhe 2': `Email: ${c.email || 'N/A'}`
+                        'Detalhe 2': `Email: ${c.email || 'N/A'}`,
+                        sortDate: new Date(0) // epoch to sort them first
                     });
                 });
         }
 
-        generatedData.sort((a,b) => new Date(a.Data).getTime() - new Date(b.Data).getTime());
-        setReport(generatedData);
+        // Sort by the real date
+        generatedData.sort((a,b) => a.sortDate.getTime() - b.sortDate.getTime());
+        
+        // Remove the sort key before setting state
+        const finalReportData: ReportData[] = generatedData.map(({ sortDate, ...rest }) => rest);
+
+        setFullReport(finalReportData);
+        setDisplayReport(finalReportData.slice(-50));
         setReportGenerated(true);
     };
     
@@ -163,7 +178,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
     };
 
     const handleExportCSV = () => {
-        const csvData = convertToCSV(report);
+        const csvData = convertToCSV(fullReport);
         const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
@@ -182,12 +197,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                 <p className="text-slate-500 mt-1">Filtre e extraia os dados que você precisa.</p>
             </header>
 
-            <div className="bg-white p-6 rounded-xl shadow-md space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-md">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {/* Executive Filter */}
-                    <div className="lg:col-span-2">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Executivos</label>
-                        <div className="p-3 border border-slate-300 rounded-md max-h-40 overflow-y-auto space-y-2">
+                    <div>
+                        <label className="block text-base font-semibold text-slate-800 mb-2">Executivos</label>
+                        <div className="p-3 border border-slate-300 rounded-md max-h-48 overflow-y-auto space-y-2">
                             <div className="flex items-center">
                                 <input
                                     type="checkbox"
@@ -213,22 +228,24 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                         </div>
                     </div>
 
-                    {/* Date Filter */}
-                    <div className="space-y-4">
-                        <div>
-                            <label htmlFor="start-date" className="block text-sm font-medium text-slate-700">Data de Início</label>
-                            <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="end-date" className="block text-sm font-medium text-slate-700">Data de Fim</label>
-                            <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    {/* Date and Data Type Filter */}
+                    <div>
+                         <label className="block text-base font-semibold text-slate-800 mb-2">Período</label>
+                         <div className="space-y-4">
+                            <div>
+                                <label htmlFor="start-date" className="block text-sm font-medium text-slate-700">Data de Início</label>
+                                <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            </div>
+                            <div>
+                                <label htmlFor="end-date" className="block text-sm font-medium text-slate-700">Data de Fim</label>
+                                <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            </div>
                         </div>
                     </div>
-
-                    {/* Data Type Filter */}
+                    
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Tipos de Dados</label>
-                        <div className="space-y-2">
+                         <label className="block text-base font-semibold text-slate-800 mb-2">Tipos de Dados</label>
+                         <div className="space-y-2">
                              {Object.keys(dataTypes).map(key => (
                                 <div key={key} className="flex items-center">
                                     <input
@@ -244,8 +261,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                         </div>
                     </div>
                 </div>
-
-                <div className="flex justify-end">
+                <div className="mt-6 pt-6 border-t border-slate-200 flex justify-end">
                     <button onClick={handleGenerateReport} className="px-6 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition">
                         Gerar Relatório
                     </button>
@@ -254,28 +270,35 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
 
             {reportGenerated && (
                 <div className="bg-white p-4 rounded-xl shadow-md">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold text-slate-700">Resultado do Relatório</h3>
-                        <button onClick={handleExportCSV} disabled={report.length === 0} className="px-4 py-2 bg-green-600 text-white rounded-md shadow-sm hover:bg-green-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed">
+                    <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-700">Resultado do Relatório</h3>
+                            {fullReport.length > 50 && (
+                                <p className="text-sm text-slate-500 mt-1">
+                                    Mostrando os últimos 50 de {fullReport.length} registros. A exportação CSV incluirá todos os dados.
+                                </p>
+                            )}
+                        </div>
+                        <button onClick={handleExportCSV} disabled={fullReport.length === 0} className="px-4 py-2 bg-green-600 text-white rounded-md shadow-sm hover:bg-green-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed text-sm">
                             Exportar para CSV
                         </button>
                     </div>
-                     <div className="overflow-x-auto max-h-96">
+                     <div className="overflow-auto max-h-[500px] border border-slate-200 rounded-lg">
                         <table className="w-full text-left">
-                            <thead className="border-b-2 border-slate-200 text-sm text-slate-500 sticky top-0 bg-white">
+                            <thead className="border-b-2 border-slate-200 text-sm text-slate-500 sticky top-0 bg-white/95 backdrop-blur-sm">
                                 <tr>
-                                    {report.length > 0 && Object.keys(report[0]).map(header => <th key={header} className="p-3">{header}</th>)}
+                                    {displayReport.length > 0 && Object.keys(displayReport[0]).map(header => <th key={header} className="p-3 whitespace-nowrap">{header}</th>)}
                                 </tr>
                             </thead>
                             <tbody>
-                                {report.map((row, index) => (
+                                {displayReport.map((row, index) => (
                                     <tr key={index} className="border-b border-slate-100 hover:bg-slate-50 text-sm">
-                                        {Object.values(row).map((value, i) => <td key={i} className="p-3 text-slate-700">{value}</td>)}
+                                        {Object.values(row).map((value, i) => <td key={i} className="p-3 text-slate-700 whitespace-nowrap">{value}</td>)}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        {report.length === 0 && <p className="text-center p-6 text-slate-500">Nenhum dado encontrado para os filtros selecionados.</p>}
+                        {fullReport.length === 0 && <p className="text-center p-6 text-slate-500">Nenhum dado encontrado para os filtros selecionados.</p>}
                     </div>
                 </div>
             )}

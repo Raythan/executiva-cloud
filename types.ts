@@ -131,3 +131,18 @@ export interface Task {
   recurrenceId?: string;
   recurrence?: RecurrenceRule;
 }
+
+export interface AllDataBackup {
+  version: string;
+  organizations: Organization[];
+  departments: Department[];
+  executives: Executive[];
+  secretaries: Secretary[];
+  users: User[];
+  eventTypes: EventType[];
+  events: Event[];
+  contactTypes: ContactType[];
+  contacts: Contact[];
+  expenses: Expense[];
+  tasks: Task[];
+}

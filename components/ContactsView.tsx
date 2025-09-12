@@ -2,14 +2,105 @@ import React, { useState } from 'react';
 import { Contact, ContactType } from '../types';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
-import { EditIcon, DeleteIcon, PlusIcon, EmailIcon, PhoneIcon } from './Icons';
+import { EditIcon, DeleteIcon, PlusIcon, EmailIcon, PhoneIcon, SettingsIcon } from './Icons';
 
 interface ContactsViewProps {
   contacts: Contact[];
   setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
   contactTypes: ContactType[];
+  setContactTypes: React.Dispatch<React.SetStateAction<ContactType[]>>;
   executiveId: string;
 }
+
+// --- Contact Type Management Components (Moved from SettingsView) ---
+const ContactTypeForm: React.FC<{ contactType: Partial<ContactType>, onSave: (ct: ContactType) => void, onCancel: () => void }> = ({ contactType, onSave, onCancel }) => {
+    const [name, setName] = useState(contactType.name || '');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name) return;
+        onSave({ id: contactType.id || `ct_${new Date().getTime()}`, name });
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="ct-name" className="block text-sm font-medium text-slate-700">Nome do Tipo</label>
+                <input type="text" id="ct-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar</button>
+            </div>
+        </form>
+    );
+};
+
+const ContactTypeSettingsModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    contactTypes: ContactType[];
+    setContactTypes: React.Dispatch<React.SetStateAction<ContactType[]>>;
+}> = ({ isOpen, onClose, contactTypes, setContactTypes }) => {
+    const [isFormModalOpen, setFormModalOpen] = useState(false);
+    const [editingContactType, setEditingContactType] = useState<Partial<ContactType> | null>(null);
+    const [contactTypeToDelete, setContactTypeToDelete] = useState<ContactType | null>(null);
+
+    const handleSave = (contactType: ContactType) => {
+        setContactTypes(prev => editingContactType?.id ? prev.map(ct => ct.id === contactType.id ? contactType : ct) : [...prev, contactType]);
+        setFormModalOpen(false);
+        setEditingContactType(null);
+    };
+
+    const confirmDelete = () => {
+        if (!contactTypeToDelete) return;
+        setContactTypes(prev => prev.filter(ct => ct.id !== contactTypeToDelete.id));
+        setContactTypeToDelete(null);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal title="Gerenciar Tipos de Contato" onClose={onClose}>
+            <div className="space-y-4">
+                <div className="flex justify-end">
+                    <button onClick={() => { setEditingContactType({}); setFormModalOpen(true); }} className="flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition text-sm">
+                        <PlusIcon /> Adicionar Tipo
+                    </button>
+                </div>
+                <ul className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                    {contactTypes.map(ct => (
+                       <li key={ct.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <span className="font-medium text-slate-800">{ct.name}</span>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => { setEditingContactType(ct); setFormModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600"><EditIcon /></button>
+                                <button onClick={() => setContactTypeToDelete(ct)} className="p-2 text-slate-400 hover:text-red-600"><DeleteIcon /></button>
+                            </div>
+                        </li>
+                    ))}
+                    {contactTypes.length === 0 && <p className="text-center text-slate-500 py-4">Nenhum tipo de contato cadastrado.</p>}
+                </ul>
+            </div>
+
+            {isFormModalOpen && (
+                <Modal title={editingContactType?.id ? 'Editar Tipo de Contato' : 'Novo Tipo de Contato'} onClose={() => setFormModalOpen(false)}>
+                    <ContactTypeForm contactType={editingContactType || {}} onSave={handleSave} onCancel={() => { setFormModalOpen(false); setEditingContactType(null); }} />
+                </Modal>
+            )}
+
+            {contactTypeToDelete && (
+                 <ConfirmationModal
+                    isOpen={!!contactTypeToDelete}
+                    onClose={() => setContactTypeToDelete(null)}
+                    onConfirm={confirmDelete}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir o tipo de contato "${contactTypeToDelete.name}"?`}
+                />
+            )}
+        </Modal>
+    );
+};
+
 
 const ContactForm: React.FC<{ contact: Partial<Contact>, onSave: (contact: Contact) => void, onCancel: () => void, contactTypes: ContactType[] }> = ({ contact, onSave, onCancel, contactTypes }) => {
     const [fullName, setFullName] = useState(contact.fullName || '');
@@ -83,10 +174,11 @@ const ContactForm: React.FC<{ contact: Partial<Contact>, onSave: (contact: Conta
     );
 };
 
-const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, contactTypes, executiveId }) => {
+const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, contactTypes, setContactTypes, executiveId }) => {
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingContact, setEditingContact] = useState<Partial<Contact> | null>(null);
     const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+    const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
 
     const handleAddContact = () => {
         setEditingContact({ executiveId });
@@ -128,10 +220,15 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
                     <h2 className="text-3xl font-bold text-slate-800">Lista de Contatos</h2>
                     <p className="text-slate-500 mt-1">Sua rede profissional, sempre à mão.</p>
                 </div>
-                <button onClick={handleAddContact} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition duration-150">
-                    <PlusIcon />
-                    Novo Contato
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={handleAddContact} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition duration-150">
+                        <PlusIcon />
+                        Novo Contato
+                    </button>
+                     <button onClick={() => setSettingsModalOpen(true)} className="p-2 bg-indigo-100 text-indigo-700 rounded-md shadow-sm hover:bg-indigo-200 transition" aria-label="Configurar Tipos de Contato">
+                        <SettingsIcon />
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -189,6 +286,13 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
                     />
                 </Modal>
             )}
+
+            <ContactTypeSettingsModal 
+                isOpen={isSettingsModalOpen}
+                onClose={() => setSettingsModalOpen(false)}
+                contactTypes={contactTypes}
+                setContactTypes={setContactTypes}
+            />
 
             {contactToDelete && (
                  <ConfirmationModal

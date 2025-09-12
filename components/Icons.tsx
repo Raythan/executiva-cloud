@@ -43,7 +43,7 @@ export const SecretariesIcon: React.FC = () => (
 );
 
 export const SettingsIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-full h-full">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
         <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-1.007 1.11-1.226l.28-.1c.34-.124.718-.124 1.058 0l.28.1c.55.219 1.02.684 1.11 1.226l.068.418c.46.283.913.634 1.33 1.057l.345-.115c.506-.17.987.126 1.165.61l.245.653c.178.474.043.99-.327 1.258l-.346.257c-.018.014-.035.03-.052.046a5.64 5.64 0 010 2.808c.017.016.034.032.052.046l.346.257c.37.268.505.784.327 1.258l-.245.653c-.178.484-.659.78-1.165.61l-.345-.115a6.47 6.47 0 01-1.33 1.057l-.068.418c-.09.542-.56 1.007-1.11 1.226l-.28.1c-.34.124-.718-.124-1.058 0l-.28-.1c-.55-.219-1.02-.684-1.11-1.226l-.068-.418a6.47 6.47 0 01-1.33-1.057l-.345.115c-.506.17-.987-.126-1.165-.61l-.245-.653c-.178-.474-.043-.99.327-1.258l.346-.257c.018-.014.035-.03.052-.046a5.64 5.64 0 010-2.808c-.017-.016-.034-.032-.052-.046l-.346-.257c-.37-.268-.505-.784-.327-1.258l.245-.653c.178-.484.659-.78 1.165-.61l.345.115c.417-.423.87-.774 1.33-1.057l.068-.418zM12 9.75a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
     </svg>
 );
@@ -109,6 +109,12 @@ export const CheckCircleIcon: React.FC = () => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
+
+export const ExclamationTriangleIcon: React.FC = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+  </svg>
+);
   
 export const ClockIcon: React.FC = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -137,5 +143,17 @@ export const LogoutIcon: React.FC = () => (
 export const ChevronDownIcon: React.FC = () => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+    </svg>
+);
+
+export const DownloadIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+);
+
+export const UploadIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
     </svg>
 );

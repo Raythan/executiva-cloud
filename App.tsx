@@ -269,9 +269,9 @@ const App: React.FC = () => {
       case 'secretaries':
         return <SecretariesView secretaries={secretaries} setSecretaries={setSecretaries} executives={executives} setUsers={setUsers} />;
       case 'agenda':
-        return <AgendaView events={filteredEvents} setEvents={setEvents} eventTypes={eventTypes} executiveId={selectedExecutiveId!} />;
+        return <AgendaView events={filteredEvents} setEvents={setEvents} eventTypes={eventTypes} setEventTypes={setEventTypes} executiveId={selectedExecutiveId!} />;
       case 'contacts':
-        return <ContactsView contacts={filteredContacts} setContacts={setContacts} contactTypes={contactTypes} executiveId={selectedExecutiveId!} />;
+        return <ContactsView contacts={filteredContacts} setContacts={setContacts} contactTypes={contactTypes} setContactTypes={setContactTypes} executiveId={selectedExecutiveId!} />;
       case 'expenses':
         return <ExpensesView expenses={filteredExpenses} setExpenses={setExpenses} executiveId={selectedExecutiveId!} />;
       case 'tasks':
@@ -279,7 +279,10 @@ const App: React.FC = () => {
       case 'reports':
         return <ReportsView executives={executives} events={events} expenses={expenses} tasks={tasks} contacts={contacts} />;
       case 'settings':
-        return <SettingsView eventTypes={eventTypes} setEventTypes={setEventTypes} contactTypes={contactTypes} setContactTypes={setContactTypes} />;
+        return <SettingsView 
+          allData={{ organizations, departments, executives, secretaries, users, eventTypes, events, contactTypes, contacts, expenses, tasks }}
+          setAllData={{ setOrganizations, setDepartments, setExecutives, setSecretaries, setUsers, setEventTypes, setEvents, setContactTypes, setContacts, setExpenses, setTasks }}
+        />;
       default:
         return <Dashboard executives={visibleExecutives} events={events} expenses={expenses} selectedExecutive={selectedExecutive} />;
     }

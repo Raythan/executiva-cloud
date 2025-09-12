@@ -2,15 +2,118 @@ import React, { useState, useEffect } from 'react';
 import { Event, EventType, RecurrenceRule } from '../types';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
-import { EditIcon, DeleteIcon, PlusIcon, BellIcon, RecurrenceIcon } from './Icons';
+import { EditIcon, DeleteIcon, PlusIcon, BellIcon, RecurrenceIcon, SettingsIcon } from './Icons';
 
 interface AgendaViewProps {
   events: Event[];
   setEvents: React.Dispatch<React.SetStateAction<Event[]>>;
   eventTypes: EventType[];
+  setEventTypes: React.Dispatch<React.SetStateAction<EventType[]>>;
   executiveId: string;
 }
 
+// --- Event Type Management Components (Moved from SettingsView) ---
+const EventTypeForm: React.FC<{ eventType: Partial<EventType>, onSave: (et: EventType) => void, onCancel: () => void }> = ({ eventType, onSave, onCancel }) => {
+    const [name, setName] = useState(eventType.name || '');
+    const [color, setColor] = useState(eventType.color || '#3b82f6');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name) return;
+        onSave({ id: eventType.id || `et_${new Date().getTime()}`, name, color });
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="et-name" className="block text-sm font-medium text-slate-700">Nome do Tipo</label>
+                <input type="text" id="et-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+            </div>
+            <div>
+                <label htmlFor="et-color" className="block text-sm font-medium text-slate-700">Cor</label>
+                <div className="flex items-center gap-2">
+                    <input type="color" id="et-color" value={color} onChange={e => setColor(e.target.value)} className="p-1 h-10 w-10 block bg-white border border-slate-300 rounded-md cursor-pointer" />
+                    <input type="text" value={color} onChange={e => setColor(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                </div>
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar</button>
+            </div>
+        </form>
+    );
+};
+
+const EventTypeSettingsModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    eventTypes: EventType[];
+    setEventTypes: React.Dispatch<React.SetStateAction<EventType[]>>;
+}> = ({ isOpen, onClose, eventTypes, setEventTypes }) => {
+    const [isFormModalOpen, setFormModalOpen] = useState(false);
+    const [editingEventType, setEditingEventType] = useState<Partial<EventType> | null>(null);
+    const [eventTypeToDelete, setEventTypeToDelete] = useState<EventType | null>(null);
+
+    const handleSave = (eventType: EventType) => {
+        setEventTypes(prev => editingEventType?.id ? prev.map(et => et.id === eventType.id ? eventType : et) : [...prev, eventType]);
+        setFormModalOpen(false);
+        setEditingEventType(null);
+    };
+
+    const confirmDelete = () => {
+        if (!eventTypeToDelete) return;
+        setEventTypes(prev => prev.filter(et => et.id !== eventTypeToDelete.id));
+        setEventTypeToDelete(null);
+    };
+    
+    if (!isOpen) return null;
+
+    return (
+        <Modal title="Gerenciar Tipos de Evento" onClose={onClose}>
+            <div className="space-y-4">
+                <div className="flex justify-end">
+                     <button onClick={() => { setEditingEventType({}); setFormModalOpen(true); }} className="flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition text-sm">
+                        <PlusIcon /> Adicionar Tipo
+                    </button>
+                </div>
+                <ul className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                    {eventTypes.map(et => (
+                        <li key={et.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <span className="w-4 h-4 rounded-full" style={{ backgroundColor: et.color }}></span>
+                                <span className="font-medium text-slate-800">{et.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => { setEditingEventType(et); setFormModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600"><EditIcon /></button>
+                                <button onClick={() => setEventTypeToDelete(et)} className="p-2 text-slate-400 hover:text-red-600"><DeleteIcon /></button>
+                            </div>
+                        </li>
+                    ))}
+                     {eventTypes.length === 0 && <p className="text-center text-slate-500 py-4">Nenhum tipo de evento cadastrado.</p>}
+                </ul>
+            </div>
+
+            {isFormModalOpen && (
+                <Modal title={editingEventType?.id ? 'Editar Tipo de Evento' : 'Novo Tipo de Evento'} onClose={() => setFormModalOpen(false)}>
+                    <EventTypeForm eventType={editingEventType || {}} onSave={handleSave} onCancel={() => { setFormModalOpen(false); setEditingEventType(null); }} />
+                </Modal>
+            )}
+
+            {eventTypeToDelete && (
+                <ConfirmationModal
+                    isOpen={!!eventTypeToDelete}
+                    onClose={() => setEventTypeToDelete(null)}
+                    onConfirm={confirmDelete}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir o tipo de evento "${eventTypeToDelete.name}"?`}
+                />
+            )}
+        </Modal>
+    );
+};
+
+
+// --- Event Form Component ---
 const EventForm: React.FC<{ event: Partial<Event>, onSave: (event: Partial<Event>, recurrence: RecurrenceRule | null) => void, onCancel: () => void, eventTypes: EventType[] }> = ({ event, onSave, onCancel, eventTypes }) => {
     const [title, setTitle] = useState(event.title || '');
     const [location, setLocation] = useState(event.location || '');
@@ -296,11 +399,12 @@ const generateRecurringEvents = (baseEvent: Partial<Event>, rule: RecurrenceRule
 };
 
 
-const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, executiveId }) => {
+const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, setEventTypes, executiveId }) => {
     const [isModalOpen, setModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Partial<Event> | null>(null);
     const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
     const [showRecurrenceDeleteModal, setShowRecurrenceDeleteModal] = useState(false);
+    const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
 
     const handleAddEvent = () => {
         setEditingEvent({ executiveId });
@@ -405,10 +509,15 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
                     <h2 className="text-3xl font-bold text-slate-800">Agenda de Eventos</h2>
                     <p className="text-slate-500 mt-1">Visualize e gerencie os próximos eventos.</p>
                 </div>
-                <button onClick={handleAddEvent} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition duration-150">
-                    <PlusIcon />
-                    Novo Evento
-                </button>
+                 <div className="flex items-center gap-2">
+                    <button onClick={handleAddEvent} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition duration-150">
+                        <PlusIcon />
+                        Novo Evento
+                    </button>
+                    <button onClick={() => setSettingsModalOpen(true)} className="p-2 bg-indigo-100 text-indigo-700 rounded-md shadow-sm hover:bg-indigo-200 transition" aria-label="Configurar Tipos de Evento">
+                        <SettingsIcon />
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md space-y-4">
@@ -458,6 +567,13 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
                     <EventForm event={editingEvent || {}} onSave={handleSaveEvent} onCancel={() => { setModalOpen(false); setEditingEvent(null); }} eventTypes={eventTypes} />
                 </Modal>
             )}
+            
+            <EventTypeSettingsModal 
+                isOpen={isSettingsModalOpen}
+                onClose={() => setSettingsModalOpen(false)}
+                eventTypes={eventTypes}
+                setEventTypes={setEventTypes}
+            />
 
             {showRecurrenceDeleteModal && (
                 <Modal title="Excluir Evento Recorrente" onClose={() => { setShowRecurrenceDeleteModal(false); setEventToDelete(null); }}>
