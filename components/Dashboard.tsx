@@ -50,28 +50,28 @@ const Dashboard: React.FC<DashboardProps> = ({ executives, events, expenses, sel
       {/* Grid for summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
-          <div className="bg-blue-100 text-blue-600 p-3 rounded-full"><ExecutivesIcon /></div>
+          <div className="bg-blue-100 text-blue-600 p-3 rounded-full"><ExecutivesIcon className="w-6 h-6" /></div>
           <div>
             <p className="text-slate-500 text-sm">Executivos Gerenciados</p>
             <p className="text-2xl font-bold">{executives.length}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
-          <div className="bg-purple-100 text-purple-600 p-3 rounded-full"><CalendarIcon /></div>
+          <div className="bg-purple-100 text-purple-600 p-3 rounded-full"><CalendarIcon className="w-6 h-6" /></div>
           <div>
             <p className="text-slate-500 text-sm">Eventos na Agenda</p>
             <p className="text-2xl font-bold">{selectedExecutive ? events.filter(e => e.executiveId === selectedExecutive.id).length : '-'}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
-          <div className="bg-green-100 text-green-600 p-3 rounded-full"><ExpensesIcon /></div>
+          <div className="bg-green-100 text-green-600 p-3 rounded-full"><ExpensesIcon className="w-6 h-6" /></div>
           <div>
             <p className="text-slate-500 text-sm">Total de Despesas</p>
             <p className="text-2xl font-bold">{selectedExecutive ? expenses.filter(e => e.executiveId === selectedExecutive.id).length : '-'}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
-          <div className="bg-yellow-100 text-yellow-600 p-3 rounded-full"><ClockIcon /></div>
+          <div className="bg-yellow-100 text-yellow-600 p-3 rounded-full"><ClockIcon className="w-6 h-6" /></div>
           <div>
             <p className="text-slate-500 text-sm">Próximos Eventos (7d)</p>
             <p className="text-2xl font-bold">{
@@ -99,7 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ executives, events, expenses, sel
           {/* Upcoming Events */}
           <div className="bg-white p-6 rounded-xl shadow-md">
             <h3 className="text-xl font-bold text-slate-700 mb-4 flex items-center">
-              <CalendarIcon />
+              <CalendarIcon className="w-6 h-6" />
               <span className="ml-2">Próximos Eventos</span>
             </h3>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
@@ -107,7 +107,7 @@ const Dashboard: React.FC<DashboardProps> = ({ executives, events, expenses, sel
                 upcomingEvents.map(event => (
                   <div key={event.id} className="p-4 rounded-lg bg-slate-50 border-l-4 border-purple-500">
                     <p className="font-semibold text-slate-800">{event.title}</p>
-                    <p className="text-sm text-slate-500 flex items-center gap-2"><ClockIcon /> {formatDateTime(event.startTime)}</p>
+                    <p className="text-sm text-slate-500 flex items-center gap-2"><ClockIcon className="w-4 h-4" /> {formatDateTime(event.startTime)}</p>
                   </div>
                 ))
               ) : (
@@ -119,7 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ executives, events, expenses, sel
           {/* Recent Expenses */}
           <div className="bg-white p-6 rounded-xl shadow-md">
             <h3 className="text-xl font-bold text-slate-700 mb-4 flex items-center">
-              <ExpensesIcon />
+              <ExpensesIcon className="w-6 h-6" />
               <span className="ml-2">Despesas Recentes</span>
             </h3>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-2">

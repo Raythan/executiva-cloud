@@ -146,3 +146,5 @@ export interface AllDataBackup {
   expenses: Expense[];
   tasks: Task[];
 }
+
+export type LayoutView = 'card' | 'list' | 'table';

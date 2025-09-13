@@ -1,7 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Task, Priority, Status, RecurrenceRule } from '../types';
+import { Task, Priority, Status, RecurrenceRule, LayoutView } from '../types';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
+import Pagination from './Pagination';
+import ViewSwitcher from './ViewSwitcher';
 import { EditIcon, DeleteIcon, PlusIcon, RecurrenceIcon } from './Icons';
 
 interface TasksViewProps {
@@ -237,6 +240,10 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [showRecurrenceDeleteModal, setShowRecurrenceDeleteModal] = useState(false);
     const [filter, setFilter] = useState<Status | 'all'>('all');
+    
+    const [layout, setLayout] = useLocalStorage<LayoutView>('tasksViewLayout', 'table');
+    const [limit, setLimit] = useLocalStorage('tasksViewLimit', 10);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const handleAddTask = () => {
         setEditingTask({ executiveId });
@@ -332,21 +339,31 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
       return sorted.filter(task => task.status === filter);
     }, [tasks, filter]);
 
+    const paginatedTasks = useMemo(() => {
+        const start = (currentPage - 1) * limit;
+        const end = start + limit;
+        return filteredTasks.slice(start, end);
+    }, [filteredTasks, currentPage, limit]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [limit, tasks, filter, layout]);
+
     const getPriorityBadgeClass = (priority: Priority) => {
       switch(priority) {
-        case Priority.High: return 'bg-red-100 text-red-800';
-        case Priority.Medium: return 'bg-yellow-100 text-yellow-800';
-        case Priority.Low: return 'bg-blue-100 text-blue-800';
-        default: return 'bg-slate-100 text-slate-800';
+        case Priority.High: return 'bg-red-100 text-red-800 border-red-500';
+        case Priority.Medium: return 'bg-yellow-100 text-yellow-800 border-yellow-500';
+        case Priority.Low: return 'bg-blue-100 text-blue-800 border-blue-500';
+        default: return 'bg-slate-100 text-slate-800 border-slate-500';
       }
     };
 
     const getStatusBadgeClass = (status: Status) => {
         switch(status) {
-          case Status.Done: return 'bg-green-100 text-green-800';
-          case Status.InProgress: return 'bg-purple-100 text-purple-800';
-          case Status.Todo: return 'bg-slate-100 text-slate-800';
-          default: return 'bg-slate-100 text-slate-800';
+          case Status.Done: return 'bg-green-100 text-green-800 border-green-500';
+          case Status.InProgress: return 'bg-purple-100 text-purple-800 border-purple-500';
+          case Status.Todo: return 'bg-slate-100 text-slate-800 border-slate-500';
+          default: return 'bg-slate-100 text-slate-800 border-slate-500';
         }
     };
     
@@ -356,10 +373,119 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
         const adjustedDate = new Date(date.getTime() + timeZoneOffset);
         return adjustedDate.toLocaleDateString('pt-BR', { year: 'numeric', month: 'short', day: 'numeric' });
     };
+    
+    const renderItems = () => {
+        if (paginatedTasks.length === 0) {
+             return (
+                <div className="col-span-full text-center p-6 bg-white rounded-xl shadow-md">
+                    <p className="text-slate-500">Nenhuma tarefa encontrada para este filtro.</p>
+                </div>
+            );
+        }
+
+        switch (layout) {
+            case 'card':
+                return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {paginatedTasks.map(task => (
+                             <div key={task.id} className="bg-white rounded-xl shadow-md p-5 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-start justify-between">
+                                        <p className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                            {task.recurrenceId && <span className="text-slate-400" title="Tarefa Recorrente"><RecurrenceIcon className="w-4 h-4" /></span>}
+                                            {task.title}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getPriorityBadgeClass(task.priority)}`}>{task.priority}</span>
+                                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getStatusBadgeClass(task.status)}`}>{task.status}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-500 mt-2">Vencimento: {formatDate(task.dueDate)}</p>
+                                </div>
+                                <div className="flex justify-end items-center gap-1 mt-4">
+                                    <button onClick={() => handleEditTask(task)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition"><EditIcon /></button>
+                                    <button onClick={() => handleDeleteClick(task)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition"><DeleteIcon /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+             case 'list':
+                 return (
+                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md space-y-4">
+                        {paginatedTasks.map(task => (
+                            <div key={task.id} className={`flex items-start space-x-4 p-4 rounded-lg bg-slate-50 border-l-4 ${getPriorityBadgeClass(task.priority)}`}>
+                                <div className="flex-1">
+                                    <div className="flex items-center justify-between">
+                                         <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                                            {task.recurrenceId && <span className="text-slate-400" title="Tarefa Recorrente"><RecurrenceIcon className="w-4 h-4" /></span>}
+                                            {task.title}
+                                        </h3>
+                                         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getStatusBadgeClass(task.status)}`}>{task.status}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-500">Vencimento: {formatDate(task.dueDate)}</p>
+                                    <span className={`mt-2 inline-block text-xs font-semibold px-2 py-1 rounded-full ${getPriorityBadgeClass(task.priority)}`}>{task.priority}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row items-center gap-1">
+                                    <button onClick={() => handleEditTask(task)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition"><EditIcon /></button>
+                                    <button onClick={() => handleDeleteClick(task)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition"><DeleteIcon /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            case 'table':
+            default:
+                 return (
+                    <div className="bg-white p-4 rounded-xl shadow-md">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="border-b-2 border-slate-200 text-sm text-slate-500">
+                                    <tr>
+                                        <th className="p-3">Título</th>
+                                        <th className="p-3 hidden md:table-cell">Prioridade</th>
+                                        <th className="p-3 hidden lg:table-cell">Vencimento</th>
+                                        <th className="p-3">Status</th>
+                                        <th className="p-3 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedTasks.map(task => (
+                                        <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                            <td className="p-3 font-medium text-slate-800">
+                                                <div className="flex items-center gap-2">
+                                                    {task.recurrenceId && <span className="text-slate-400" title="Tarefa Recorrente"><RecurrenceIcon className="w-4 h-4" /></span>}
+                                                    <span>{task.title}</span>
+                                                </div>
+                                                <p className="font-normal text-sm text-slate-500 md:hidden">{task.priority} - {formatDate(task.dueDate)}</p>
+                                            </td>
+                                            <td className="p-3 hidden md:table-cell">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPriorityBadgeClass(task.priority)}`}>{task.priority}</span>
+                                            </td>
+                                            <td className="p-3 hidden lg:table-cell text-slate-600">{formatDate(task.dueDate)}</td>
+                                            <td className="p-3">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(task.status)}`}>{task.status}</span>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <button onClick={() => handleEditTask(task)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar"><EditIcon /></button>
+                                                    <button onClick={() => handleDeleteClick(task)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir"><DeleteIcon /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                );
+        }
+    }
+
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-slate-800">Gerenciador de Tarefas</h2>
                     <p className="text-slate-500 mt-1">Organize suas atividades e mantenha o foco no que importa.</p>
@@ -368,6 +494,18 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
                     <PlusIcon />
                     Nova Tarefa
                 </button>
+            </header>
+
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-4 bg-white rounded-xl shadow-md">
+                 <ViewSwitcher layout={layout} setLayout={setLayout} />
+                 <div className="flex items-center gap-2 text-sm">
+                    <label htmlFor="limit" className="text-slate-600">Itens por página:</label>
+                    <select id="limit" value={limit} onChange={(e) => setLimit(Number(e.target.value))} className="px-2 py-1 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value={10}>10</option>
+                        <option value={30}>30</option>
+                        <option value={50}>50</option>
+                    </select>
+                </div>
             </div>
 
             <div className="bg-white p-4 rounded-xl shadow-md">
@@ -379,51 +517,22 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
                         </button>
                     ))}
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="border-b-2 border-slate-200 text-sm text-slate-500">
-                            <tr>
-                                <th className="p-3">Título</th>
-                                <th className="p-3 hidden md:table-cell">Prioridade</th>
-                                <th className="p-3 hidden lg:table-cell">Vencimento</th>
-                                <th className="p-3">Status</th>
-                                <th className="p-3 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredTasks.map(task => (
-                                <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="p-3 font-medium text-slate-800">
-                                        <div className="flex items-center gap-2">
-                                            {task.recurrenceId && <span className="text-slate-400" title="Tarefa Recorrente"><RecurrenceIcon/></span>}
-                                            <span>{task.title}</span>
-                                        </div>
-                                        <p className="font-normal text-sm text-slate-500 md:hidden">{task.priority} - {formatDate(task.dueDate)}</p>
-                                    </td>
-                                    <td className="p-3 hidden md:table-cell">
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getPriorityBadgeClass(task.priority)}`}>{task.priority}</span>
-                                    </td>
-                                    <td className="p-3 hidden lg:table-cell text-slate-600">{formatDate(task.dueDate)}</td>
-                                    <td className="p-3">
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(task.status)}`}>{task.status}</span>
-                                    </td>
-                                    <td className="p-3 text-right">
-                                        <div className="flex justify-end items-center gap-2">
-                                            <button onClick={() => handleEditTask(task)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar">
-                                                <EditIcon />
-                                            </button>
-                                            <button onClick={() => handleDeleteClick(task)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir">
-                                                <DeleteIcon />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {filteredTasks.length === 0 && <p className="text-center p-6 text-slate-500">Nenhuma tarefa encontrada para este filtro.</p>}
-                </div>
+                {layout === 'table' ? renderItems() : null}
             </div>
+
+            {layout !== 'table' ? <div>{renderItems()}</div> : null}
+
+             {filteredTasks.length > 0 && (
+                <div className={layout === 'table' ? "bg-white p-4 rounded-b-xl shadow-md" : "mt-6"}>
+                    <Pagination
+                        currentPage={currentPage}
+                        totalItems={filteredTasks.length}
+                        itemsPerPage={limit}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
+            )}
+
 
             {isModalOpen && (
                 <Modal title={editingTask?.id ? 'Editar Tarefa' : 'Nova Tarefa'} onClose={() => { setModalOpen(false); setEditingTask(null); }}>

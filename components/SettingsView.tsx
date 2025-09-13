@@ -141,7 +141,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ allData, setAllData }) => {
                         </div>
                         {importMessage && (
                             <div className={`mt-4 p-3 rounded-md flex items-center gap-3 text-sm animate-fade-in-fast ${importMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {importMessage.type === 'success' ? <CheckCircleIcon /> : <ExclamationTriangleIcon />}
+                                {importMessage.type === 'success' ? <CheckCircleIcon className="w-6 h-6" /> : <ExclamationTriangleIcon className="w-6 h-6" />}
                                 <span>{importMessage.text}</span>
                             </div>
                         )}

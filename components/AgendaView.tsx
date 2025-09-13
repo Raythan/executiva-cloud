@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Event, EventType, RecurrenceRule } from '../types';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
+import Pagination from './Pagination';
 import { EditIcon, DeleteIcon, PlusIcon, BellIcon, RecurrenceIcon, SettingsIcon } from './Icons';
 
 interface AgendaViewProps {
@@ -406,6 +408,24 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
     const [showRecurrenceDeleteModal, setShowRecurrenceDeleteModal] = useState(false);
     const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
 
+    const [limit, setLimit] = useLocalStorage('agendaViewLimit', 10);
+    const [currentPage, setCurrentPage] = useState(1);
+    
+    const sortedEvents = useMemo(() => 
+        [...events].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
+    [events]);
+
+    const paginatedEvents = useMemo(() => {
+        const start = (currentPage - 1) * limit;
+        const end = start + limit;
+        return sortedEvents.slice(start, end);
+    }, [sortedEvents, currentPage, limit]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [limit, events]);
+
+
     const handleAddEvent = () => {
         setEditingEvent({ executiveId });
         setModalOpen(true);
@@ -479,8 +499,6 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
         setEditingEvent(null);
     };
     
-    const sortedEvents = [...events].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-
     const formatFullDate = (isoString: string) => {
         return new Date(isoString).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     };
@@ -519,9 +537,23 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
                     </button>
                 </div>
             </div>
+            
+            <div className="flex items-center justify-end gap-2 text-sm">
+                <label htmlFor="limit" className="text-slate-600">Itens por página:</label>
+                <select 
+                    id="limit"
+                    value={limit}
+                    onChange={(e) => setLimit(Number(e.target.value))}
+                    className="px-2 py-1 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                    <option value={10}>10</option>
+                    <option value={30}>30</option>
+                    <option value={50}>50</option>
+                </select>
+            </div>
 
             <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md space-y-4">
-              {sortedEvents.length > 0 ? sortedEvents.map(event => {
+              {paginatedEvents.length > 0 ? paginatedEvents.map(event => {
                   const eventType = eventTypes.find(et => et.id === event.eventTypeId);
                   return (
                       <div key={event.id} className="flex items-start space-x-4 p-4 rounded-lg bg-slate-50" style={{borderLeft: `4px solid ${eventType?.color || '#a855f7'}`}}>
@@ -532,7 +564,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
                           <div className="flex-1">
                               <div className="flex items-center gap-3">
                                 <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                                  {event.recurrenceId && <span className="text-slate-400" title="Evento recorrente"><RecurrenceIcon/></span>}
+                                  {event.recurrenceId && <span className="text-slate-400" title="Evento recorrente"><RecurrenceIcon className="w-4 h-4" /></span>}
                                   {event.title}
                                 </h3>
                                 {eventType && <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{backgroundColor: eventType.color, color: '#fff'}}>{eventType.name}</span>}
@@ -540,7 +572,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
                               <p className="text-slate-500">{event.location}</p>
                               {event.reminderMinutes && (
                                 <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">
-                                    <BellIcon /> Lembrete: {formatReminderText(event.reminderMinutes)}
+                                    <BellIcon className="w-4 h-4" /> Lembrete: {formatReminderText(event.reminderMinutes)}
                                 </p>
                               )}
                               <p className="text-sm text-slate-400 mt-1">{formatFullDate(event.startTime)}</p>
@@ -560,6 +592,14 @@ const AgendaView: React.FC<AgendaViewProps> = ({ events, setEvents, eventTypes, 
                     <p className="text-slate-500">Nenhum evento agendado para este executivo.</p>
                 </div>
               )}
+               {sortedEvents.length > 0 && (
+                 <Pagination
+                    currentPage={currentPage}
+                    totalItems={sortedEvents.length}
+                    itemsPerPage={limit}
+                    onPageChange={setCurrentPage}
+                 />
+               )}
             </div>
 
             {isModalOpen && (

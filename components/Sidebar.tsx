@@ -14,26 +14,26 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
   const appVersion = '1.3.0';
 
   const allNavItems: { view: View; label: string; icon: React.ReactNode }[] = useMemo(() => [
-    { view: 'dashboard', label: 'Painel', icon: <DashboardIcon /> },
-    { view: 'organizations', label: 'Organizações', icon: <OrganizationsIcon /> },
-    { view: 'executives', label: 'Executivos', icon: <ExecutivesIcon /> },
-    { view: 'secretaries', label: 'Secretárias', icon: <SecretariesIcon /> },
-    { view: 'agenda', label: 'Agenda', icon: <CalendarIcon /> },
-    { view: 'contacts', label: 'Contatos', icon: <ContactsIcon /> },
-    { view: 'expenses', label: 'Despesas', icon: <ExpensesIcon /> },
-    { view: 'tasks', label: 'Tarefas', icon: <TasksIcon /> },
-    { view: 'reports', label: 'Relatórios', icon: <ReportsIcon /> },
-    { view: 'settings', label: 'Configurações', icon: <SettingsIcon /> },
+    { view: 'dashboard', label: 'Painel', icon: <DashboardIcon className="w-6 h-6" /> },
+    { view: 'organizations', label: 'Organizações', icon: <OrganizationsIcon className="w-6 h-6" /> },
+    { view: 'executives', label: 'Executivos', icon: <ExecutivesIcon className="w-6 h-6" /> },
+    { view: 'secretaries', label: 'Secretárias', icon: <SecretariesIcon className="w-6 h-6" /> },
+    { view: 'agenda', label: 'Agenda', icon: <CalendarIcon className="w-6 h-6" /> },
+    { view: 'contacts', label: 'Contatos', icon: <ContactsIcon className="w-6 h-6" /> },
+    { view: 'expenses', label: 'Despesas', icon: <ExpensesIcon className="w-6 h-6" /> },
+    { view: 'tasks', label: 'Tarefas', icon: <TasksIcon className="w-6 h-6" /> },
+    { view: 'reports', label: 'Relatórios', icon: <ReportsIcon className="w-6 h-6" /> },
+    { view: 'settings', label: 'Configurações', icon: <SettingsIcon className="w-6 h-6" /> },
   ], []);
 
   const visibleNavItems = useMemo(() => {
     if (!currentUser) return [];
     switch (currentUser.role) {
       case 'executive':
-        const executiveViews: View[] = ['dashboard', 'agenda', 'contacts', 'expenses', 'tasks', 'reports'];
+        const executiveViews: View[] = ['dashboard', 'agenda', 'contacts', 'expenses', 'tasks', 'reports', 'settings'];
         return allNavItems.filter(item => executiveViews.includes(item.view));
       case 'secretary':
-        const secretaryHiddenViews: View[] = ['organizations', 'settings'];
+        const secretaryHiddenViews: View[] = ['organizations'];
         return allNavItems.filter(item => !secretaryHiddenViews.includes(item.view));
       case 'admin':
       case 'master':
@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
 
       <aside className={`fixed lg:relative top-0 left-0 h-full bg-slate-800 text-white w-64 flex flex-col z-40 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="flex items-center justify-center p-6 border-b border-slate-700">
-          <LogoIcon />
+          <LogoIcon className="w-8 h-8" />
           <h1 className="text-xl font-bold ml-3">Executiva Cloud</h1>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2">
@@ -78,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
                   : 'text-slate-300 hover:bg-slate-700 hover:text-white'
               }`}
             >
-              <span className="w-6 h-6">{icon}</span>
+              {icon}
               <span className="ml-4 capitalize">{label}</span>
             </a>
           ))}

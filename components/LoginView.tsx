@@ -7,14 +7,14 @@ interface LoginViewProps {
   onLogin: (user: User) => void;
 }
 
-const getRoleIcon = (role: User['role']) => {
+const getRoleIcon = (role: User['role'], className: string = 'w-5 h-5') => {
     switch(role) {
-        case 'executive': return <ExecutivesIcon />;
-        case 'secretary': return <SecretariesIcon />;
+        case 'executive': return <ExecutivesIcon className={className} />;
+        case 'secretary': return <SecretariesIcon className={className} />;
         case 'admin':
         case 'master':
-            return <SettingsIcon />;
-        default: return <ExecutivesIcon />;
+            return <SettingsIcon className={className} />;
+        default: return <ExecutivesIcon className={className} />;
     }
 }
 
@@ -58,7 +58,7 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
         <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4 antialiased">
             <div className="text-center">
                 <div className="inline-block bg-slate-800 p-4 rounded-full mb-4">
-                    <LogoIcon />
+                    <LogoIcon className="w-24 h-24 text-white" />
                 </div>
                 <h1 className="text-4xl font-bold text-slate-800">Bem-vindo à Executiva Cloud</h1>
                 <p className="text-slate-500 mt-2 text-lg">Selecione seu perfil para acessar o sistema.</p>
@@ -79,7 +79,7 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
                             >
                                 {selectedUser ? (
                                     <span className="flex items-center">
-                                        <div className="w-6 h-6 mr-3 text-indigo-600 flex-shrink-0">{getRoleIcon(selectedUser.role)}</div>
+                                        {getRoleIcon(selectedUser.role, 'w-6 h-6 mr-3 text-indigo-600 flex-shrink-0')}
                                         <span className="block truncate font-semibold text-slate-800">{selectedUser.fullName}</span>
                                     </span>
                                 ) : (
@@ -106,7 +106,7 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
                                             onClick={() => handleSelectUser(user)}
                                         >
                                             <div className="flex items-start">
-                                                <div className="w-8 h-8 mr-3 text-indigo-600 flex-shrink-0">{getRoleIcon(user.role)}</div>
+                                                {getRoleIcon(user.role, 'w-6 h-6 mr-3 text-indigo-600 flex-shrink-0')}
                                                 <div>
                                                     <p className="font-semibold">{user.fullName}</p>
                                                     <p className="text-xs text-slate-500">{getRoleDescription(user.role)}</p>

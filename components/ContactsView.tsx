@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { Contact, ContactType } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Contact, ContactType, LayoutView } from '../types';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
+import Pagination from './Pagination';
+import ViewSwitcher from './ViewSwitcher';
 import { EditIcon, DeleteIcon, PlusIcon, EmailIcon, PhoneIcon, SettingsIcon } from './Icons';
 
 interface ContactsViewProps {
@@ -180,6 +183,25 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
     const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
     const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
 
+    const [layout, setLayout] = useLocalStorage<LayoutView>('contactsViewLayout', 'card');
+    const [limit, setLimit] = useLocalStorage('contactsViewLimit', 10);
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const sortedContacts = useMemo(() => 
+        [...contacts].sort((a, b) => a.fullName.localeCompare(b.fullName)),
+    [contacts]);
+
+    const paginatedContacts = useMemo(() => {
+        const start = (currentPage - 1) * limit;
+        const end = start + limit;
+        return sortedContacts.slice(start, end);
+    }, [sortedContacts, currentPage, limit]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [limit, contacts, layout]);
+
+
     const handleAddContact = () => {
         setEditingContact({ executiveId });
         setModalOpen(true);
@@ -211,11 +233,124 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
         setEditingContact(null);
     };
 
-    const sortedContacts = [...contacts].sort((a, b) => a.fullName.localeCompare(b.fullName));
+    const renderItems = () => {
+        if (paginatedContacts.length === 0) {
+            return (
+                <div className="col-span-full text-center p-6 bg-white rounded-xl shadow-md">
+                    <p className="text-slate-500">Nenhum contato adicionado para este executivo.</p>
+                </div>
+            );
+        }
+
+        switch (layout) {
+            case 'table':
+                return (
+                    <div className="bg-white p-4 rounded-xl shadow-md overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="border-b-2 border-slate-200 text-sm text-slate-500">
+                                <tr>
+                                    <th className="p-3">Nome</th>
+                                    <th className="p-3 hidden md:table-cell">Empresa</th>
+                                    <th className="p-3 hidden lg:table-cell">E-mail / Telefone</th>
+                                    <th className="p-3">Tipo</th>
+                                    <th className="p-3 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginatedContacts.map(contact => (
+                                    <tr key={contact.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                        <td className="p-3 font-medium text-slate-800">{contact.fullName}</td>
+                                        <td className="p-3 hidden md:table-cell text-slate-600">{contact.company}</td>
+                                        <td className="p-3 hidden lg:table-cell text-slate-600 text-sm">
+                                            {contact.email && <p>{contact.email}</p>}
+                                            {contact.phone && <p>{contact.phone}</p>}
+                                        </td>
+                                        <td className="p-3 text-slate-600">
+                                            {contact.contactTypeId && (
+                                                <span className="text-xs bg-slate-200 text-slate-600 font-semibold px-2 py-1 rounded-full whitespace-nowrap">
+                                                    {contactTypes.find(ct => ct.id === contact.contactTypeId)?.name}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="p-3 text-right">
+                                            <div className="flex justify-end items-center gap-2">
+                                                <button onClick={() => handleEditContact(contact)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition"><EditIcon /></button>
+                                                <button onClick={() => handleDeleteContact(contact)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition"><DeleteIcon /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            case 'list':
+                return (
+                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-md space-y-4">
+                        {paginatedContacts.map(contact => (
+                             <div key={contact.id} className="flex items-start space-x-4 p-4 rounded-lg bg-slate-50 border-l-4 border-indigo-500">
+                                <div className="w-12 h-12 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xl font-bold flex-shrink-0">
+                                    {contact.fullName.charAt(0)}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="text-lg font-semibold text-slate-800">{contact.fullName}</h3>
+                                        {contact.contactTypeId && <span className="text-xs bg-slate-200 text-slate-600 font-semibold px-2 py-1 rounded-full whitespace-nowrap">{contactTypes.find(ct => ct.id === contact.contactTypeId)?.name}</span>}
+                                    </div>
+                                    <p className="text-sm text-slate-500">{contact.company}</p>
+                                    {contact.email && <p className="flex items-center text-slate-600 truncate text-sm mt-1"><EmailIcon className="text-slate-400" /> <a href={`mailto:${contact.email}`} className="ml-2 hover:underline">{contact.email}</a></p>}
+                                    {contact.phone && <p className="flex items-center text-slate-600 text-sm"><PhoneIcon className="text-slate-400" /> <span className="ml-2">{contact.phone}</span></p>}
+                                </div>
+                                <div className="flex flex-col sm:flex-row items-center gap-1">
+                                    <button onClick={() => handleEditContact(contact)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition"><EditIcon /></button>
+                                    <button onClick={() => handleDeleteContact(contact)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition"><DeleteIcon /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+            case 'card':
+            default:
+                return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {paginatedContacts.map(contact => (
+                            <div key={contact.id} className="bg-white rounded-xl shadow-md p-5 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-12 h-12 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xl font-bold flex-shrink-0">
+                                                {contact.fullName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-bold text-slate-800">{contact.fullName}</h3>
+                                                <p className="text-sm text-slate-500">{contact.company}</p>
+                                            </div>
+                                        </div>
+                                        {contact.contactTypeId && (
+                                            <span className="text-xs bg-slate-200 text-slate-600 font-semibold px-2 py-1 rounded-full whitespace-nowrap">
+                                                {contactTypes.find(ct => ct.id === contact.contactTypeId)?.name}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="mt-4 space-y-2 text-sm">
+                                        {contact.email && <p className="flex items-center text-slate-600 truncate"><EmailIcon className="text-slate-400" /> <a href={`mailto:${contact.email}`} className="ml-2 hover:underline">{contact.email}</a></p>}
+                                        {contact.phone && <p className="flex items-center text-slate-600"><PhoneIcon className="text-slate-400" /> <span className="ml-2">{contact.phone}</span></p>}
+                                    </div>
+                                </div>
+                                <div className="flex justify-end items-center gap-1 mt-4">
+                                    <button onClick={() => handleEditContact(contact)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar contato"><EditIcon /></button>
+                                    <button onClick={() => handleDeleteContact(contact)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir contato"><DeleteIcon /></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+        }
+    };
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold text-slate-800">Lista de Contatos</h2>
                     <p className="text-slate-500 mt-1">Sua rede profissional, sempre à mão.</p>
@@ -229,49 +364,30 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
                         <SettingsIcon />
                     </button>
                 </div>
+            </header>
+
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-4 bg-white rounded-xl shadow-md">
+                <ViewSwitcher layout={layout} setLayout={setLayout} />
+                <div className="flex items-center gap-2 text-sm">
+                    <label htmlFor="limit" className="text-slate-600">Itens por página:</label>
+                    <select id="limit" value={limit} onChange={(e) => setLimit(Number(e.target.value))} className="px-2 py-1 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value={10}>10</option>
+                        <option value={30}>30</option>
+                        <option value={50}>50</option>
+                    </select>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedContacts.length > 0 ? sortedContacts.map(contact => (
-                    <div key={contact.id} className="bg-white rounded-xl shadow-md p-5 flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center space-x-4">
-                                    <div className="w-12 h-12 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xl font-bold flex-shrink-0">
-                                        {contact.fullName.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-800">{contact.fullName}</h3>
-                                        <p className="text-sm text-slate-500">{contact.company}</p>
-                                    </div>
-                                </div>
-                                {contact.contactTypeId && (
-                                    <span className="text-xs bg-slate-200 text-slate-600 font-semibold px-2 py-1 rounded-full whitespace-nowrap">
-                                        {contactTypes.find(ct => ct.id === contact.contactTypeId)?.name}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="mt-4 space-y-2 text-sm">
-                                {contact.email && <p className="flex items-center text-slate-600 truncate">
-                                    <EmailIcon /> <a href={`mailto:${contact.email}`} className="ml-2 hover:underline">{contact.email}</a>
-                                </p>}
-                                {contact.phone && <p className="flex items-center text-slate-600">
-                                    <PhoneIcon /> <span className="ml-2">{contact.phone}</span>
-                                </p>}
-                            </div>
-                        </div>
-                        <div className="flex justify-end items-center gap-1 mt-4">
-                            <button onClick={() => handleEditContact(contact)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-200 transition" aria-label="Editar contato">
-                                <EditIcon />
-                            </button>
-                            <button onClick={() => handleDeleteContact(contact)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-200 transition" aria-label="Excluir contato">
-                                <DeleteIcon />
-                            </button>
-                        </div>
-                    </div>
-                )) : (
-                    <div className="col-span-full text-center p-6 bg-white rounded-xl shadow-md">
-                        <p className="text-slate-500">Nenhum contato adicionado para este executivo.</p>
+            <div>
+                {renderItems()}
+                {sortedContacts.length > 0 && (
+                    <div className={layout !== 'table' ? "mt-6" : "bg-white p-4 rounded-b-xl shadow-md"}>
+                        <Pagination
+                            currentPage={currentPage}
+                            totalItems={sortedContacts.length}
+                            itemsPerPage={limit}
+                            onPageChange={setCurrentPage}
+                        />
                     </div>
                 )}
             </div>

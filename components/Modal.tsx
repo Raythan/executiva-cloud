@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { CloseIcon } from './Icons';
 
@@ -49,7 +48,7 @@ const Modal: React.FC<ModalProps> = ({ title, onClose, children }) => {
             className="p-1 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors"
             aria-label="Fechar modal"
           >
-            <CloseIcon />
+            <CloseIcon className="w-6 h-6" />
           </button>
         </header>
         <main className="p-5 overflow-y-auto">

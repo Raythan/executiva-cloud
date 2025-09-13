@@ -186,8 +186,8 @@ const ExecutivesView: React.FC<ExecutivesViewProps> = ({ executives, setExecutiv
                                     <td className="p-3 font-medium text-slate-800">{exec.fullName}</td>
                                     <td className="p-3 hidden md:table-cell text-slate-600">{getExecutiveDetails(exec)}</td>
                                     <td className="p-3 hidden lg:table-cell text-slate-600 text-sm">
-                                        {exec.email && <p className="flex items-center gap-2"><EmailIcon /> {exec.email}</p>}
-                                        {exec.phone && <p className="flex items-center gap-2 mt-1"><PhoneIcon /> {exec.phone}</p>}
+                                        {exec.email && <p className="flex items-center gap-2"><EmailIcon className="text-slate-400" /> {exec.email}</p>}
+                                        {exec.phone && <p className="flex items-center gap-2 mt-1"><PhoneIcon className="text-slate-400" /> {exec.phone}</p>}
                                     </td>
                                     <td className="p-3 text-right">
                                         <div className="flex justify-end items-center gap-2">
