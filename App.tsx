@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Executive, Organization, Event, EventType, Contact, ContactType, Expense, View, ExpenseStatus, Task, Priority, Status, Department, Secretary, User, UserRole } from './types';
+import { Executive, Organization, Event, EventType, Contact, ContactType, Expense, View, ExpenseStatus, Task, Priority, Status, Department, Secretary, User, UserRole, Document, DocumentCategory } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -14,6 +14,7 @@ import SecretariesView from './components/SecretariesView';
 import LoginView from './components/LoginView';
 import ReportsView from './components/ReportsView';
 import UserMenu from './components/UserMenu';
+import DocumentsView from './components/DocumentsView';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -32,9 +33,43 @@ const App: React.FC = () => {
   ], []);
 
   const initialExecutives: Executive[] = useMemo(() => [
-    { id: 'exec1', fullName: 'Carlos Silva', email: 'carlos.silva@techsolutions.com', organizationId: 'org1', phone: '(11) 98888-1111', departmentId: 'dept1' },
-    { id: 'exec2', fullName: 'Beatriz Costa', email: 'bia.costa@inovacorp.com', organizationId: 'org2', phone: '(21) 97777-2222', departmentId: 'dept3' },
-    { id: 'exec3', fullName: 'Roberto Almeida', email: 'roberto.a@techsolutions.com', organizationId: 'org1', phone: '(11) 96666-3333', departmentId: 'dept2' },
+    { 
+      id: 'exec1', 
+      fullName: 'Carlos Silva', 
+      workEmail: 'carlos.silva@techsolutions.com', 
+      organizationId: 'org1', 
+      workPhone: '(11) 98888-1111', 
+      departmentId: 'dept1', 
+      jobTitle: 'Diretor de Engenharia', 
+      hireDate: '2018-05-10', 
+      birthDate: '1980-11-23',
+      cpf: '111.222.333-44',
+      rg: '12.345.678-9',
+      address: 'Rua das Inovações, 123, São Paulo, SP, 01234-567',
+      bankInfo: 'Banco Digital S.A.\nAgência: 0001\nConta Corrente: 12345-6',
+      compensationInfo: 'Salário Base + Bônus Anual + Stock Options',
+    },
+    { 
+      id: 'exec2', 
+      fullName: 'Beatriz Costa', 
+      workEmail: 'bia.costa@inovacorp.com', 
+      organizationId: 'org2', 
+      workPhone: '(21) 97777-2222', 
+      departmentId: 'dept3', 
+      jobTitle: 'CEO', 
+      linkedinProfileUrl: 'https://linkedin.com/in/beatrizcosta', 
+      bio: 'Beatriz é uma líder visionária com mais de 20 anos de experiência no setor de tecnologia.' 
+    },
+    { 
+      id: 'exec3', 
+      fullName: 'Roberto Almeida', 
+      workEmail: 'roberto.a@techsolutions.com', 
+      organizationId: 'org1', 
+      workPhone: '(11) 96666-3333', 
+      departmentId: 'dept2', 
+      jobTitle: 'Diretor de Vendas', 
+      reportsToExecutiveId: 'exec1' 
+    },
   ], []);
   
   const initialSecretaries: Secretary[] = useMemo(() => [
@@ -110,6 +145,13 @@ const App: React.FC = () => {
         { id: 't4', executiveId: 'exec1', title: 'Enviar relatório semanal', dueDate: new Date(new Date(today).setDate(today.getDate() - 1)).toISOString().split('T')[0], priority: Priority.Medium, status: Status.Done },
     ]
   }, []);
+  
+  const initialDocumentCategories: DocumentCategory[] = useMemo(() => [
+      { id: 'dc1', name: 'Viagem' },
+      { id: 'dc2', name: 'Identificação' },
+  ], []);
+
+  const initialDocuments: Document[] = useMemo(() => [], []);
 
 
   // --- LOCAL STORAGE STATE MANAGEMENT ---
@@ -124,6 +166,8 @@ const App: React.FC = () => {
   const [contacts, setContacts] = useLocalStorage<Contact[]>('contacts', initialContacts);
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', initialExpenses);
   const [tasks, setTasks] = useLocalStorage<Task[]>('tasks', initialTasks);
+  const [documentCategories, setDocumentCategories] = useLocalStorage<DocumentCategory[]>('documentCategories', initialDocumentCategories);
+  const [documents, setDocuments] = useLocalStorage<Document[]>('documents', initialDocuments);
   const [notifiedEventIds, setNotifiedEventIds] = useState<Set<string>>(new Set());
 
   const [currentUser, setCurrentUser] = useLocalStorage<User | null>('currentUser', null);
@@ -210,6 +254,7 @@ const App: React.FC = () => {
   const filteredContacts = useMemo(() => contacts.filter(c => c.executiveId === selectedExecutiveId), [contacts, selectedExecutiveId]);
   const filteredExpenses = useMemo(() => expenses.filter(ex => ex.executiveId === selectedExecutiveId), [expenses, selectedExecutiveId]);
   const filteredTasks = useMemo(() => tasks.filter(t => t.executiveId === selectedExecutiveId), [tasks, selectedExecutiveId]);
+  const filteredDocuments = useMemo(() => documents.filter(d => d.executiveId === selectedExecutiveId), [documents, selectedExecutiveId]);
 
   const viewTitles: Record<View, string> = {
     dashboard: 'Painel',
@@ -220,6 +265,7 @@ const App: React.FC = () => {
     contacts: 'Contatos',
     expenses: 'Despesas',
     tasks: 'Tarefas',
+    documents: 'Documentos',
     reports: 'Relatórios',
     settings: 'Configurações',
   };
@@ -228,7 +274,7 @@ const App: React.FC = () => {
   const renderView = () => {
     if (!currentUser) return null;
     // Check if an executive is selected for views that require it
-    if (['agenda', 'contacts', 'expenses', 'tasks'].includes(currentView) && !selectedExecutiveId && currentUser.role !== 'executive') {
+    if (['agenda', 'contacts', 'expenses', 'tasks', 'documents'].includes(currentView) && !selectedExecutiveId && currentUser.role !== 'executive') {
       return (
           <div className="text-center p-10 bg-white rounded-lg shadow-md max-w-lg mx-auto">
              <h3 className="text-xl font-semibold text-slate-800">Selecione um Executivo</h3>
@@ -239,7 +285,14 @@ const App: React.FC = () => {
 
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard executives={visibleExecutives} events={events} expenses={expenses} selectedExecutive={selectedExecutive} />;
+        return <Dashboard 
+                  executives={visibleExecutives} 
+                  events={events} 
+                  expenses={expenses} 
+                  selectedExecutive={selectedExecutive}
+                  organizations={organizations}
+                  departments={departments} 
+                />;
       case 'executives':
         return <ExecutivesView 
                   executives={visibleExecutives} 
@@ -252,6 +305,7 @@ const App: React.FC = () => {
                   setContacts={setContacts}
                   setExpenses={setExpenses}
                   setTasks={setTasks}
+                  setDocuments={setDocuments}
                   setUsers={setUsers}
                 />;
       case 'organizations':
@@ -264,6 +318,7 @@ const App: React.FC = () => {
                   setContacts={setContacts}
                   setExpenses={setExpenses}
                   setTasks={setTasks}
+                  setDocuments={setDocuments}
                   setUsers={setUsers} 
                 />;
       case 'secretaries':
@@ -276,15 +331,24 @@ const App: React.FC = () => {
         return <ExpensesView expenses={filteredExpenses} setExpenses={setExpenses} executiveId={selectedExecutiveId!} />;
       case 'tasks':
         return <TasksView tasks={filteredTasks} setTasks={setTasks} executiveId={selectedExecutiveId!} />;
+      case 'documents':
+        return <DocumentsView documents={filteredDocuments} setDocuments={setDocuments} documentCategories={documentCategories} setDocumentCategories={setDocumentCategories} executiveId={selectedExecutiveId!} />;
       case 'reports':
         return <ReportsView executives={executives} events={events} expenses={expenses} tasks={tasks} contacts={contacts} />;
       case 'settings':
         return <SettingsView 
-          allData={{ organizations, departments, executives, secretaries, users, eventTypes, events, contactTypes, contacts, expenses, tasks }}
-          setAllData={{ setOrganizations, setDepartments, setExecutives, setSecretaries, setUsers, setEventTypes, setEvents, setContactTypes, setContacts, setExpenses, setTasks }}
+          allData={{ organizations, departments, executives, secretaries, users, eventTypes, events, contactTypes, contacts, expenses, tasks, documentCategories, documents }}
+          setAllData={{ setOrganizations, setDepartments, setExecutives, setSecretaries, setUsers, setEventTypes, setEvents, setContactTypes, setContacts, setExpenses, setTasks, setDocumentCategories, setDocuments }}
         />;
       default:
-        return <Dashboard executives={visibleExecutives} events={events} expenses={expenses} selectedExecutive={selectedExecutive} />;
+        return <Dashboard 
+                  executives={visibleExecutives} 
+                  events={events} 
+                  expenses={expenses} 
+                  selectedExecutive={selectedExecutive}
+                  organizations={organizations}
+                  departments={departments}
+                />;
     }
   };
 

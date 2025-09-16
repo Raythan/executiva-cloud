@@ -14,11 +14,56 @@ export interface Department {
 export interface Executive {
   id: string; // UUID
   fullName: string;
-  email?: string;
-  phone?: string;
-  organizationId?: string; // UUID
-  departmentId?: string; // UUID
+  
+  // Bloco 1: Identificação Pessoal
+  cpf?: string;
+  rg?: string;
+  rgIssuer?: string; // Órgão emissor
+  rgIssueDate?: string; // Data de expedição
+  birthDate?: string; // (already exists)
+  nationality?: string;
+  placeOfBirth?: string; // Naturalidade
+  motherName?: string;
+  fatherName?: string;
+  civilStatus?: string;
+
+  // Bloco 2: Informações de Contato
+  workEmail?: string; // (already exists)
+  workPhone?: string; // (already exists)
+  extension?: string; // (already exists)
+  personalEmail?: string; // (already exists)
+  personalPhone?: string; // (already exists)
+  address?: string; // Endereço Residencial Completo
+  linkedinProfileUrl?: string; // (already exists)
+
+  // Bloco 3: Dados Profissionais e Corporativos
+  jobTitle?: string; // (already exists)
+  organizationId?: string; // (already exists)
+  departmentId?: string; // (already exists)
+  costCenter?: string; // Centro de Custo
+  employeeId?: string; // (already exists)
+  reportsToExecutiveId?: string; // (already exists)
+  hireDate?: string; // (already exists)
+  workLocation?: string; // (already exists)
+  
+  // Bloco 4: Perfil Público
+  photoUrl?: string; // (already exists)
+  bio?: string; // (already exists)
+  education?: string; // (already exists)
+  languages?: string; // (already exists)
+
+  // Bloco 5: Dados de Emergência e Dependentes
+  emergencyContactName?: string; // (already exists)
+  emergencyContactPhone?: string; // (already exists)
+  emergencyContactRelation?: string; // (already exists)
+  dependentsInfo?: string;
+
+  // Bloco 6: Dados Financeiros e de Acesso
+  bankInfo?: string;
+  compensationInfo?: string;
+  systemAccessLevels?: string;
 }
+
 
 export interface Secretary {
   id: string; // UUID
@@ -106,7 +151,7 @@ export interface Expense {
 }
 
 // Views correspond to navigation items in the sidebar
-export type View = 'dashboard' | 'executives' | 'agenda' | 'contacts' | 'expenses' | 'organizations' | 'settings' | 'tasks' | 'secretaries' | 'reports';
+export type View = 'dashboard' | 'executives' | 'agenda' | 'contacts' | 'expenses' | 'organizations' | 'settings' | 'tasks' | 'secretaries' | 'reports' | 'documents';
 
 export enum Priority {
   High = 'Alta',
@@ -132,6 +177,20 @@ export interface Task {
   recurrence?: RecurrenceRule;
 }
 
+export interface DocumentCategory {
+  id: string;
+  name: string;
+}
+
+export interface Document {
+  id: string;
+  name: string;
+  imageUrl: string; // Base64 Data URL
+  categoryId?: string;
+  executiveId: string;
+  uploadDate: string; // ISO String
+}
+
 export interface AllDataBackup {
   version: string;
   organizations: Organization[];
@@ -145,6 +204,8 @@ export interface AllDataBackup {
   contacts: Contact[];
   expenses: Expense[];
   tasks: Task[];
+  documentCategories: DocumentCategory[];
+  documents: Document[];
 }
 
 export type LayoutView = 'card' | 'list' | 'table';

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, User } from '../types';
-import { DashboardIcon, ExecutivesIcon, CalendarIcon, ContactsIcon, ExpensesIcon, OrganizationsIcon, SettingsIcon, LogoIcon, TasksIcon, SecretariesIcon, ReportsIcon } from './Icons';
+import { DashboardIcon, ExecutivesIcon, CalendarIcon, ContactsIcon, ExpensesIcon, OrganizationsIcon, SettingsIcon, LogoIcon, TasksIcon, SecretariesIcon, ReportsIcon, DocumentsIcon } from './Icons';
 
 interface SidebarProps {
   currentView: View;
@@ -19,6 +19,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
     { view: 'executives', label: 'Executivos', icon: <ExecutivesIcon className="w-6 h-6" /> },
     { view: 'secretaries', label: 'Secretárias', icon: <SecretariesIcon className="w-6 h-6" /> },
     { view: 'agenda', label: 'Agenda', icon: <CalendarIcon className="w-6 h-6" /> },
+    { view: 'documents', label: 'Documentos', icon: <DocumentsIcon className="w-6 h-6" /> },
     { view: 'contacts', label: 'Contatos', icon: <ContactsIcon className="w-6 h-6" /> },
     { view: 'expenses', label: 'Despesas', icon: <ExpensesIcon className="w-6 h-6" /> },
     { view: 'tasks', label: 'Tarefas', icon: <TasksIcon className="w-6 h-6" /> },
@@ -30,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
     if (!currentUser) return [];
     switch (currentUser.role) {
       case 'executive':
-        const executiveViews: View[] = ['dashboard', 'agenda', 'contacts', 'expenses', 'tasks', 'reports', 'settings'];
+        const executiveViews: View[] = ['dashboard', 'agenda', 'documents', 'contacts', 'expenses', 'tasks', 'reports', 'settings'];
         return allNavItems.filter(item => executiveViews.includes(item.view));
       case 'secretary':
         const secretaryHiddenViews: View[] = ['organizations'];

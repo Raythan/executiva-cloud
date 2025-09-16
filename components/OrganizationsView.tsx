@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Organization, Department, Executive, User, Secretary, Event, Contact, Expense, Task } from '../types';
+import { Organization, Department, Executive, User, Secretary, Event, Contact, Expense, Task, Document } from '../types';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
 import { EditIcon, DeleteIcon, PlusIcon } from './Icons';
@@ -17,6 +17,7 @@ interface OrganizationsViewProps {
   setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
   setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  setDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
@@ -80,7 +81,7 @@ const OrganizationsView: React.FC<OrganizationsViewProps> = ({
     executives, setExecutives, 
     secretaries, setSecretaries,
     setEvents, setContacts, setExpenses, setTasks,
-    setUsers 
+    setDocuments, setUsers 
 }) => {
     const [isOrgModalOpen, setOrgModalOpen] = useState(false);
     const [editingOrganization, setEditingOrganization] = useState<Partial<Organization> | null>(null);
@@ -125,6 +126,7 @@ const OrganizationsView: React.FC<OrganizationsViewProps> = ({
         setContacts(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
         setExpenses(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
         setTasks(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+        setDocuments(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
 
         // 6. Unlink deleted executives from any secretaries
         setSecretaries(secs => secs.map(sec => ({

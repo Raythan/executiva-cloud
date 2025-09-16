@@ -62,7 +62,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ allData, setAllData }) => {
                     throw new Error("Versão do arquivo de backup incompatível.");
                 }
 
-                const requiredKeys: (keyof AllDataBackup)[] = ['organizations', 'departments', 'executives', 'secretaries', 'users', 'events', 'tasks', 'contacts', 'expenses', 'eventTypes', 'contactTypes'];
+                const requiredKeys: (keyof AllDataBackup)[] = ['organizations', 'departments', 'executives', 'secretaries', 'users', 'events', 'tasks', 'contacts', 'expenses', 'eventTypes', 'contactTypes', 'documents', 'documentCategories'];
                 const hasAllKeys = requiredKeys.every(key => Array.isArray(parsedData[key]));
 
                 if (!hasAllKeys) {
@@ -95,6 +95,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ allData, setAllData }) => {
         setAllData.setContacts(dataToImport.contacts);
         setAllData.setExpenses(dataToImport.expenses);
         setAllData.setTasks(dataToImport.tasks);
+        setAllData.setDocumentCategories(dataToImport.documentCategories);
+        setAllData.setDocuments(dataToImport.documents);
         
         setImportConfirmOpen(false);
         setDataToImport(null);
