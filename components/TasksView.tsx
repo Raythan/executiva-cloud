@@ -240,6 +240,7 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
     const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
     const [showRecurrenceDeleteModal, setShowRecurrenceDeleteModal] = useState(false);
     const [filter, setFilter] = useState<Status | 'all'>('all');
+    const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
     
     const [layout, setLayout] = useLocalStorage<LayoutView>('tasksViewLayout', 'table');
     const [limit, setLimit] = useLocalStorage('tasksViewLimit', 10);
@@ -335,9 +336,10 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
 
     const filteredTasks = useMemo(() => {
       const sorted = tasks.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-      if (filter === 'all') return sorted;
-      return sorted.filter(task => task.status === filter);
-    }, [tasks, filter]);
+      return sorted
+        .filter(task => filter === 'all' || task.status === filter)
+        .filter(task => priorityFilter === 'all' || task.priority === priorityFilter);
+    }, [tasks, filter, priorityFilter]);
 
     const paginatedTasks = useMemo(() => {
         const start = (currentPage - 1) * limit;
@@ -347,7 +349,7 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [limit, tasks, filter, layout]);
+    }, [limit, tasks, filter, layout, priorityFilter]);
 
     const getPriorityBadgeClass = (priority: Priority) => {
       switch(priority) {
@@ -509,21 +511,30 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, setTasks, executiveId }) =
             </div>
 
             <div className="bg-white p-4 rounded-xl shadow-md">
-                <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 mb-3">
-                    <span className="text-sm font-medium text-slate-600">Filtrar por status:</span>
-                    {(['all', ...Object.values(Status)] as const).map(statusValue => (
-                        <button key={statusValue} onClick={() => setFilter(statusValue)} className={`px-3 py-1 text-sm rounded-full transition ${filter === statusValue ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                            {statusValue === 'all' ? 'Todos' : statusValue}
-                        </button>
-                    ))}
+                <div className="space-y-3">
+                    <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                        <span className="text-sm font-medium text-slate-600">Filtrar por status:</span>
+                        {(['all', ...Object.values(Status)] as const).map(statusValue => (
+                            <button key={statusValue} onClick={() => setFilter(statusValue)} className={`px-3 py-1 text-sm rounded-full transition ${filter === statusValue ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                {statusValue === 'all' ? 'Todos' : statusValue}
+                            </button>
+                        ))}
+                    </div>
+                     <div className="flex items-center space-x-2 flex-wrap gap-y-2 border-t border-slate-200 pt-3">
+                        <span className="text-sm font-medium text-slate-600">Filtrar por prioridade:</span>
+                        {(['all', ...Object.values(Priority)] as const).map(priorityValue => (
+                            <button key={priorityValue} onClick={() => setPriorityFilter(priorityValue)} className={`px-3 py-1 text-sm rounded-full transition ${priorityFilter === priorityValue ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                {priorityValue === 'all' ? 'Todas' : priorityValue}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                {layout === 'table' ? renderItems() : null}
             </div>
 
-            {layout !== 'table' ? <div>{renderItems()}</div> : null}
+            <div>{renderItems()}</div>
 
              {filteredTasks.length > 0 && (
-                <div className={layout === 'table' ? "bg-white p-4 rounded-b-xl shadow-md" : "mt-6"}>
+                <div className="mt-6">
                     <Pagination
                         currentPage={currentPage}
                         totalItems={filteredTasks.length}

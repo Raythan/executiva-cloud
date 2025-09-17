@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
     { view: 'agenda', label: 'Agenda', icon: <CalendarIcon className="w-6 h-6" /> },
     { view: 'documents', label: 'Documentos', icon: <DocumentsIcon className="w-6 h-6" /> },
     { view: 'contacts', label: 'Contatos', icon: <ContactsIcon className="w-6 h-6" /> },
-    { view: 'expenses', label: 'Despesas', icon: <ExpensesIcon className="w-6 h-6" /> },
+    { view: 'finances', label: 'Finanças', icon: <ExpensesIcon className="w-6 h-6" /> },
     { view: 'tasks', label: 'Tarefas', icon: <TasksIcon className="w-6 h-6" /> },
     { view: 'reports', label: 'Relatórios', icon: <ReportsIcon className="w-6 h-6" /> },
     { view: 'settings', label: 'Configurações', icon: <SettingsIcon className="w-6 h-6" /> },
@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, setCurrentV
     if (!currentUser) return [];
     switch (currentUser.role) {
       case 'executive':
-        const executiveViews: View[] = ['dashboard', 'agenda', 'documents', 'contacts', 'expenses', 'tasks', 'reports', 'settings'];
+        const executiveViews: View[] = ['dashboard', 'agenda', 'documents', 'contacts', 'finances', 'tasks', 'reports', 'settings'];
         return allNavItems.filter(item => executiveViews.includes(item.view));
       case 'secretary':
         const secretaryHiddenViews: View[] = ['organizations'];

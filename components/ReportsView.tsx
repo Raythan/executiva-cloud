@@ -16,6 +16,7 @@ type ReportData = {
     'Descrição/Título': string;
     'Detalhe 1'?: string | number;
     'Detalhe 2'?: string | number;
+    'Detalhe 3'?: string | number;
 };
 
 // Internal type to hold a sortable date
@@ -33,7 +34,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
 
     const dataTypeLabels: { [key: string]: string } = {
         events: 'Eventos',
-        expenses: 'Despesas',
+        expenses: 'Finanças',
         tasks: 'Tarefas',
         contacts: 'Contatos',
     };
@@ -99,12 +100,13 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                 .forEach(e => {
                     const exec = executives.find(ex => ex.id === e.executiveId);
                     generatedData.push({
-                        'Tipo de Dado': 'Despesa',
+                        'Tipo de Dado': `Financeiro (${e.type})`,
                         'Executivo': exec?.fullName || 'N/A',
                         'Data': new Date(e.expenseDate + 'T00:00:00').toLocaleDateString('pt-BR'),
                         'Descrição/Título': e.description,
                         'Detalhe 1': `Valor: ${e.amount.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`,
                         'Detalhe 2': `Status: ${e.status}`,
+                        'Detalhe 3': `Entidade: ${e.entityType}`,
                         sortDate: new Date(e.expenseDate + 'T00:00:00')
                     });
                 });

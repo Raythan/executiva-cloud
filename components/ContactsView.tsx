@@ -182,24 +182,29 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
     const [editingContact, setEditingContact] = useState<Partial<Contact> | null>(null);
     const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
     const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
+    const [filterType, setFilterType] = useState<string>('all');
 
     const [layout, setLayout] = useLocalStorage<LayoutView>('contactsViewLayout', 'card');
     const [limit, setLimit] = useLocalStorage('contactsViewLimit', 10);
     const [currentPage, setCurrentPage] = useState(1);
 
-    const sortedContacts = useMemo(() => 
-        [...contacts].sort((a, b) => a.fullName.localeCompare(b.fullName)),
-    [contacts]);
+    const filteredContacts = useMemo(() => {
+        const sorted = [...contacts].sort((a, b) => a.fullName.localeCompare(b.fullName));
+        if (filterType === 'all') {
+          return sorted;
+        }
+        return sorted.filter(contact => contact.contactTypeId === filterType);
+    }, [contacts, filterType]);
 
     const paginatedContacts = useMemo(() => {
         const start = (currentPage - 1) * limit;
         const end = start + limit;
-        return sortedContacts.slice(start, end);
-    }, [sortedContacts, currentPage, limit]);
+        return filteredContacts.slice(start, end);
+    }, [filteredContacts, currentPage, limit]);
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [limit, contacts, layout]);
+    }, [limit, contacts, layout, filterType]);
 
 
     const handleAddContact = () => {
@@ -237,7 +242,7 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
         if (paginatedContacts.length === 0) {
             return (
                 <div className="col-span-full text-center p-6 bg-white rounded-xl shadow-md">
-                    <p className="text-slate-500">Nenhum contato adicionado para este executivo.</p>
+                    <p className="text-slate-500">Nenhum contato encontrado para este filtro.</p>
                 </div>
             );
         }
@@ -378,13 +383,27 @@ const ContactsView: React.FC<ContactsViewProps> = ({ contacts, setContacts, cont
                 </div>
             </div>
 
+            <div className="bg-white p-4 rounded-xl shadow-md">
+                <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                    <span className="text-sm font-medium text-slate-600">Filtrar por tipo:</span>
+                    <button onClick={() => setFilterType('all')} className={`px-3 py-1 text-sm rounded-full transition ${filterType === 'all' ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                        Todos
+                    </button>
+                    {contactTypes.map(ct => (
+                         <button key={ct.id} onClick={() => setFilterType(ct.id)} className={`px-3 py-1 text-sm rounded-full transition ${filterType === ct.id ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                            {ct.name}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div>
                 {renderItems()}
-                {sortedContacts.length > 0 && (
+                {filteredContacts.length > 0 && (
                     <div className={layout !== 'table' ? "mt-6" : "bg-white p-4 rounded-b-xl shadow-md"}>
                         <Pagination
                             currentPage={currentPage}
-                            totalItems={sortedContacts.length}
+                            totalItems={filteredContacts.length}
                             itemsPerPage={limit}
                             onPageChange={setCurrentPage}
                         />

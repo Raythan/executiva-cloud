@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Document, DocumentCategory } from '../types';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
+import ImageModal from './ImageModal';
 import { EditIcon, DeleteIcon, PlusIcon, SettingsIcon, UploadIcon } from './Icons';
 
 interface DocumentsViewProps {
@@ -107,6 +108,7 @@ const DocumentForm: React.FC<{ document: Partial<Document>, onSave: (doc: Docume
     const [name, setName] = useState(document.name || '');
     const [categoryId, setCategoryId] = useState(document.categoryId || '');
     const [imageUrl, setImageUrl] = useState(document.imageUrl || '');
+    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,13 +120,16 @@ const DocumentForm: React.FC<{ document: Partial<Document>, onSave: (doc: Docume
             return;
         }
 
+        setIsLoading(true);
+        setError('');
         const reader = new FileReader();
         reader.onloadend = () => {
             setImageUrl(reader.result as string);
-            setError('');
+            setIsLoading(false);
         };
         reader.onerror = () => {
             setError('Ocorreu um erro ao ler o arquivo.');
+            setIsLoading(false);
         };
         reader.readAsDataURL(file);
     };
@@ -147,35 +152,48 @@ const DocumentForm: React.FC<{ document: Partial<Document>, onSave: (doc: Docume
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label htmlFor="doc-name" className="block text-sm font-medium text-slate-700">Nome/Descrição do Documento</label>
-                <input type="text" id="doc-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-            </div>
-             <div>
-                <label htmlFor="doc-category" className="block text-sm font-medium text-slate-700">Categoria</label>
-                <select id="doc-category" value={categoryId} onChange={e => setCategoryId(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    <option value="">Sem Categoria</option>
-                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                </select>
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-slate-700">Arquivo de Imagem</label>
-                <div className="mt-2 flex items-center gap-4">
-                     {imageUrl && <img src={imageUrl} alt="Preview" className="w-24 h-24 rounded-md object-cover border-2 border-slate-200" />}
-                     <div className="flex-1">
-                        <label htmlFor="file-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 bg-white text-indigo-600 rounded-md shadow-sm border border-indigo-300 hover:bg-indigo-50 transition">
-                            <UploadIcon />
-                            <span>{imageUrl ? 'Trocar Imagem' : 'Selecionar Imagem'}</span>
-                        </label>
-                        <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleFileChange} />
-                        <p className="text-xs text-slate-500 mt-2">Formatos suportados: PNG, JPG, GIF, etc.</p>
-                     </div>
+            <fieldset disabled={isLoading} className="space-y-4">
+                <div>
+                    <label htmlFor="doc-name" className="block text-sm font-medium text-slate-700">Nome/Descrição do Documento</label>
+                    <input type="text" id="doc-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                 </div>
-            </div>
+                 <div>
+                    <label htmlFor="doc-category" className="block text-sm font-medium text-slate-700">Categoria</label>
+                    <select id="doc-category" value={categoryId} onChange={e => setCategoryId(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="">Sem Categoria</option>
+                        {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-700">Arquivo de Imagem</label>
+                    <div className="mt-2 flex items-center gap-4">
+                         {imageUrl && !isLoading && <img src={imageUrl} alt="Preview" className="w-24 h-24 rounded-md object-cover border-2 border-slate-200" />}
+                         <div className="flex-1">
+                            {isLoading ? (
+                                 <div className="flex items-center justify-center gap-2 p-4 text-slate-500 bg-slate-50 rounded-md">
+                                    <div className="w-5 h-5 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></div>
+                                    <span>Processando imagem...</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <label htmlFor="file-upload" className="cursor-pointer flex items-center justify-center gap-2 px-4 py-2 bg-white text-indigo-600 rounded-md shadow-sm border border-indigo-300 hover:bg-indigo-50 transition">
+                                        <UploadIcon />
+                                        <span>{imageUrl ? 'Trocar Imagem' : 'Selecionar Imagem'}</span>
+                                    </label>
+                                    <input id="file-upload" name="file-upload" type="file" className="sr-only" accept="image/*" onChange={handleFileChange} />
+                                    <p className="text-xs text-slate-500 mt-2">Formatos suportados: PNG, JPG, GIF, etc.</p>
+                                </>
+                            )}
+                         </div>
+                    </div>
+                </div>
+            </fieldset>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar Documento</button>
+                <button type="submit" disabled={isLoading} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition disabled:bg-slate-400 disabled:cursor-not-allowed">
+                    {isLoading ? 'Aguarde...' : 'Salvar Documento'}
+                </button>
             </div>
         </form>
     );
@@ -188,6 +206,8 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ documents, setDocuments, 
     const [docToDelete, setDocToDelete] = useState<Document | null>(null);
     const [isCategoryModalOpen, setCategoryModalOpen] = useState(false);
     const [filterCategory, setFilterCategory] = useState<string>('all');
+    const [viewingImage, setViewingImage] = useState<string | null>(null);
+
 
     const filteredDocuments = useMemo(() => {
         const sorted = [...documents].sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
@@ -259,9 +279,9 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ documents, setDocuments, 
                     return (
                         <div key={doc.id} className="bg-white rounded-xl shadow-md overflow-hidden group">
                             <div className="relative">
-                                <a href={doc.imageUrl} target="_blank" rel="noopener noreferrer">
-                                <img src={doc.imageUrl} alt={doc.name} className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                                </a>
+                                <button onClick={() => setViewingImage(doc.imageUrl)} className="w-full h-48 block">
+                                    <img src={doc.imageUrl} alt={doc.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                </button>
                                  <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => handleEditDoc(doc)} className="p-2 bg-white/80 backdrop-blur-sm text-slate-700 hover:bg-white hover:text-indigo-600 rounded-full transition shadow"><EditIcon /></button>
                                     <button onClick={() => setDocToDelete(doc)} className="p-2 bg-white/80 backdrop-blur-sm text-slate-700 hover:bg-white hover:text-red-600 rounded-full transition shadow"><DeleteIcon /></button>
@@ -305,6 +325,10 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ documents, setDocuments, 
                     title="Confirmar Exclusão"
                     message={`Tem certeza que deseja excluir o documento "${docToDelete.name}"?`}
                 />
+            )}
+            
+            {viewingImage && (
+                <ImageModal imageUrl={viewingImage} onClose={() => setViewingImage(null)} />
             )}
 
         </div>

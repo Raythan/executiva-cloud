@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Executive, Organization, Event, EventType, Contact, ContactType, Expense, View, ExpenseStatus, Task, Priority, Status, Department, Secretary, User, UserRole, Document, DocumentCategory } from './types';
+import { Executive, Organization, Event, EventType, Contact, ContactType, Expense, View, ExpenseStatus, Task, Priority, Status, Department, Secretary, User, UserRole, Document, DocumentCategory, ExpenseCategory } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -7,7 +7,7 @@ import ExecutivesView from './components/ExecutivesView';
 import OrganizationsView from './components/OrganizationsView';
 import AgendaView from './components/AgendaView';
 import ContactsView from './components/ContactsView';
-import ExpensesView from './components/ExpensesView';
+import FinancesView from './components/ExpensesView';
 import SettingsView from './components/SettingsView';
 import TasksView from './components/TasksView';
 import SecretariesView from './components/SecretariesView';
@@ -127,12 +127,27 @@ const App: React.FC = () => {
     { id: 'c2', executiveId: 'exec2', fullName: 'Julio Marques', company: 'Fast Logistics', email: 'julio@fastlog.com', phone: '(21) 94444-5678', contactTypeId: 'ct2', role: 'Diretor de Operações' },
   ], []);
 
+  const initialExpenseCategories: ExpenseCategory[] = useMemo(() => [
+    { id: 'ec1', name: 'Alimentação' },
+    { id: 'ec2', name: 'Transporte' },
+    { id: 'ec3', name: 'Software' },
+    { id: 'ec4', name: 'Consultoria' },
+    { id: 'ec5', name: 'Reembolso' },
+  ], []);
+
   const initialExpenses: Expense[] = useMemo(() => {
-     const today = new Date();
+    const today = new Date();
+    const createDateString = (daysAgo: number): string => {
+        const date = new Date(today);
+        date.setDate(date.getDate() - daysAgo);
+        return date.toISOString().split('T')[0];
+    };
+
      return [
-      { id: 'ex1', executiveId: 'exec1', description: 'Almoço com cliente', amount: 150.75, expenseDate: new Date(today.setDate(today.getDate() - 1)).toISOString().split('T')[0], category: 'Alimentação', status: 'Aprovada' as ExpenseStatus, receiptUrl: 'http://example.com/recibo1.jpg' },
-      { id: 'ex2', executiveId: 'exec1', description: 'Transporte para reunião', amount: 45.50, expenseDate: new Date().toISOString().split('T')[0], category: 'Transporte', status: 'Pendente' as ExpenseStatus },
-      { id: 'ex3', executiveId: 'exec2', description: 'Assinatura Software', amount: 89.90, expenseDate: new Date(today.setDate(today.getDate() - 5)).toISOString().split('T')[0], category: 'Software', status: 'Reembolsada' as ExpenseStatus },
+      { id: 'ex1', executiveId: 'exec1', description: 'Almoço com cliente', amount: 150.75, expenseDate: createDateString(1), type: 'A pagar', entityType: 'Pessoa Jurídica', categoryId: 'ec1', status: 'Pago' as ExpenseStatus, receiptUrl: 'http://example.com/recibo1.jpg' },
+      { id: 'ex2', executiveId: 'exec1', description: 'Transporte para reunião', amount: 45.50, expenseDate: createDateString(0), type: 'A pagar', entityType: 'Pessoa Jurídica', categoryId: 'ec2', status: 'Pendente' as ExpenseStatus },
+      { id: 'ex3', executiveId: 'exec2', description: 'Assinatura Software', amount: 89.90, expenseDate: createDateString(5), type: 'A pagar', entityType: 'Pessoa Jurídica', categoryId: 'ec3', status: 'Pago' as ExpenseStatus },
+      { id: 'ex4', executiveId: 'exec1', description: 'Pagamento de Consultoria', amount: 2500, expenseDate: createDateString(10), type: 'A receber', entityType: 'Pessoa Física', categoryId: 'ec4', status: 'Recebida' as ExpenseStatus },
      ]
   }, []);
 
@@ -165,6 +180,7 @@ const App: React.FC = () => {
   const [contactTypes, setContactTypes] = useLocalStorage<ContactType[]>('contactTypes', initialContactTypes);
   const [contacts, setContacts] = useLocalStorage<Contact[]>('contacts', initialContacts);
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', initialExpenses);
+  const [expenseCategories, setExpenseCategories] = useLocalStorage<ExpenseCategory[]>('expenseCategories', initialExpenseCategories);
   const [tasks, setTasks] = useLocalStorage<Task[]>('tasks', initialTasks);
   const [documentCategories, setDocumentCategories] = useLocalStorage<DocumentCategory[]>('documentCategories', initialDocumentCategories);
   const [documents, setDocuments] = useLocalStorage<Document[]>('documents', initialDocuments);
@@ -252,7 +268,7 @@ const App: React.FC = () => {
 
   const filteredEvents = useMemo(() => events.filter(e => e.executiveId === selectedExecutiveId), [events, selectedExecutiveId]);
   const filteredContacts = useMemo(() => contacts.filter(c => c.executiveId === selectedExecutiveId), [contacts, selectedExecutiveId]);
-  const filteredExpenses = useMemo(() => expenses.filter(ex => ex.executiveId === selectedExecutiveId), [expenses, selectedExecutiveId]);
+  const filteredFinances = useMemo(() => expenses.filter(ex => ex.executiveId === selectedExecutiveId), [expenses, selectedExecutiveId]);
   const filteredTasks = useMemo(() => tasks.filter(t => t.executiveId === selectedExecutiveId), [tasks, selectedExecutiveId]);
   const filteredDocuments = useMemo(() => documents.filter(d => d.executiveId === selectedExecutiveId), [documents, selectedExecutiveId]);
 
@@ -263,7 +279,7 @@ const App: React.FC = () => {
     secretaries: 'Secretárias',
     agenda: 'Agenda',
     contacts: 'Contatos',
-    expenses: 'Despesas',
+    finances: 'Finanças',
     tasks: 'Tarefas',
     documents: 'Documentos',
     reports: 'Relatórios',
@@ -274,7 +290,7 @@ const App: React.FC = () => {
   const renderView = () => {
     if (!currentUser) return null;
     // Check if an executive is selected for views that require it
-    if (['agenda', 'contacts', 'expenses', 'tasks', 'documents'].includes(currentView) && !selectedExecutiveId && currentUser.role !== 'executive') {
+    if (['agenda', 'contacts', 'finances', 'tasks', 'documents'].includes(currentView) && !selectedExecutiveId && currentUser.role !== 'executive') {
       return (
           <div className="text-center p-10 bg-white rounded-lg shadow-md max-w-lg mx-auto">
              <h3 className="text-xl font-semibold text-slate-800">Selecione um Executivo</h3>
@@ -292,6 +308,7 @@ const App: React.FC = () => {
                   selectedExecutive={selectedExecutive}
                   organizations={organizations}
                   departments={departments} 
+                  expenseCategories={expenseCategories}
                 />;
       case 'executives':
         return <ExecutivesView 
@@ -327,8 +344,8 @@ const App: React.FC = () => {
         return <AgendaView events={filteredEvents} setEvents={setEvents} eventTypes={eventTypes} setEventTypes={setEventTypes} executiveId={selectedExecutiveId!} />;
       case 'contacts':
         return <ContactsView contacts={filteredContacts} setContacts={setContacts} contactTypes={contactTypes} setContactTypes={setContactTypes} executiveId={selectedExecutiveId!} />;
-      case 'expenses':
-        return <ExpensesView expenses={filteredExpenses} setExpenses={setExpenses} executiveId={selectedExecutiveId!} />;
+      case 'finances':
+        return <FinancesView expenses={filteredFinances} setExpenses={setExpenses} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} executiveId={selectedExecutiveId!} />;
       case 'tasks':
         return <TasksView tasks={filteredTasks} setTasks={setTasks} executiveId={selectedExecutiveId!} />;
       case 'documents':
@@ -337,8 +354,8 @@ const App: React.FC = () => {
         return <ReportsView executives={executives} events={events} expenses={expenses} tasks={tasks} contacts={contacts} />;
       case 'settings':
         return <SettingsView 
-          allData={{ organizations, departments, executives, secretaries, users, eventTypes, events, contactTypes, contacts, expenses, tasks, documentCategories, documents }}
-          setAllData={{ setOrganizations, setDepartments, setExecutives, setSecretaries, setUsers, setEventTypes, setEvents, setContactTypes, setContacts, setExpenses, setTasks, setDocumentCategories, setDocuments }}
+          allData={{ organizations, departments, executives, secretaries, users, eventTypes, events, contactTypes, contacts, expenses, expenseCategories, tasks, documentCategories, documents }}
+          setAllData={{ setOrganizations, setDepartments, setExecutives, setSecretaries, setUsers, setEventTypes, setEvents, setContactTypes, setContacts, setExpenses, setExpenseCategories, setTasks, setDocumentCategories, setDocuments }}
         />;
       default:
         return <Dashboard 
@@ -348,6 +365,7 @@ const App: React.FC = () => {
                   selectedExecutive={selectedExecutive}
                   organizations={organizations}
                   departments={departments}
+                  expenseCategories={expenseCategories}
                 />;
     }
   };

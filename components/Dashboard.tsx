@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Executive, Event, Expense, Organization, Department } from '../types';
+import { Executive, Event, Expense, Organization, Department, ExpenseCategory } from '../types';
 import { CalendarIcon, ExpensesIcon, ClockIcon, EmailIcon, PhoneIcon } from './Icons';
 
 interface DashboardProps {
@@ -9,9 +9,10 @@ interface DashboardProps {
   selectedExecutive: Executive | undefined;
   organizations: Organization[];
   departments: Department[];
+  expenseCategories: ExpenseCategory[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ events, expenses, selectedExecutive, organizations, departments }) => {
+const Dashboard: React.FC<DashboardProps> = ({ events, expenses, selectedExecutive, organizations, departments, expenseCategories }) => {
   const upcomingEvents = useMemo(() => events
     .filter(event => new Date(event.startTime) >= new Date() && event.executiveId === selectedExecutive?.id)
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
@@ -176,15 +177,18 @@ const Dashboard: React.FC<DashboardProps> = ({ events, expenses, selectedExecuti
             </h3>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
               {recentExpenses.length > 0 ? (
-                recentExpenses.map(expense => (
+                recentExpenses.map(expense => {
+                  const category = expenseCategories.find(c => c.id === expense.categoryId);
+                  return (
                   <div key={expense.id} className="p-4 rounded-lg bg-slate-50 border-l-4 border-green-500 flex justify-between items-center">
                     <div>
                         <p className="font-semibold text-slate-800">{expense.description}</p>
-                        <p className="text-sm text-slate-500">{formatDate(expense.expenseDate)} - {expense.category}</p>
+                        {/* FIX: Use categoryId to look up the category name from expenseCategories. */}
+                        <p className="text-sm text-slate-500">{formatDate(expense.expenseDate)} - {category?.name || 'Sem categoria'}</p>
                     </div>
                     <p className="font-bold text-green-700">{formatCurrency(expense.amount)}</p>
                   </div>
-                ))
+                )})
               ) : (
                 <p className="text-slate-500 p-4 text-center">Nenhuma despesa registrada para este executivo.</p>
               )}

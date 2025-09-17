@@ -137,21 +137,30 @@ export interface Contact {
   executiveId: string; // UUID
 }
 
-export type ExpenseStatus = 'Pendente' | 'Aprovada' | 'Reembolsada';
+export type ExpenseStatus = 'Pendente' | 'Pago' | 'Recebida';
+export type ExpenseType = 'A pagar' | 'A receber';
+export type ExpenseEntityType = 'Pessoa Física' | 'Pessoa Jurídica';
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+}
 
 export interface Expense {
     id: string; // UUID
     description: string;
     amount: number;
     expenseDate: string; // YYYY-MM-DD
-    category?: string;
+    type: ExpenseType;
+    entityType: ExpenseEntityType;
+    categoryId?: string;
     status: ExpenseStatus;
-    receiptUrl?: string; // As per MVP, this is a simple text URL
+    receiptUrl?: string;
     executiveId: string; // UUID
 }
 
 // Views correspond to navigation items in the sidebar
-export type View = 'dashboard' | 'executives' | 'agenda' | 'contacts' | 'expenses' | 'organizations' | 'settings' | 'tasks' | 'secretaries' | 'reports' | 'documents';
+export type View = 'dashboard' | 'executives' | 'agenda' | 'contacts' | 'finances' | 'organizations' | 'settings' | 'tasks' | 'secretaries' | 'reports' | 'documents';
 
 export enum Priority {
   High = 'Alta',
@@ -203,6 +212,7 @@ export interface AllDataBackup {
   contactTypes: ContactType[];
   contacts: Contact[];
   expenses: Expense[];
+  expenseCategories: ExpenseCategory[];
   tasks: Task[];
   documentCategories: DocumentCategory[];
   documents: Document[];
