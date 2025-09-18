@@ -167,14 +167,6 @@ const EventForm: React.FC<{ event: Partial<Event>, onSave: (event: Partial<Event
             setReminderUnit('minutes');
         }
     }, [event.reminderMinutes]);
-    
-    useEffect(() => {
-        if(isRecurrent && recurrence.frequency === 'weekly' && (!recurrence.daysOfWeek || recurrence.daysOfWeek.length === 0) && startTime) {
-            const dayOfWeek = new Date(startTime).getUTCDay();
-            setRecurrence(r => ({...r, daysOfWeek: [dayOfWeek]}));
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRecurrent, recurrence.frequency, startTime]);
 
     const handleRecurrenceChange = (field: keyof RecurrenceRule, value: any) => {
         setRecurrence(prev => ({ ...prev, [field]: value }));
@@ -288,7 +280,20 @@ const EventForm: React.FC<{ event: Partial<Event>, onSave: (event: Partial<Event
                         <div className="flex items-center gap-2 flex-wrap">
                              <span className="text-sm text-slate-600">Repetir a cada</span>
                              <input type="number" value={recurrence.interval} onChange={e => handleRecurrenceChange('interval', parseInt(e.target.value) || 1)} min="1" className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-md shadow-sm sm:text-sm"/>
-                             <select value={recurrence.frequency} onChange={e => handleRecurrenceChange('frequency', e.target.value as RecurrenceRule['frequency'])} className="px-2 py-1 bg-white border border-slate-300 rounded-md shadow-sm sm:text-sm">
+                             <select
+                                value={recurrence.frequency}
+                                onChange={e => {
+                                    const newFrequency = e.target.value as RecurrenceRule['frequency'];
+                                    setRecurrence(prev => {
+                                        const updated = { ...prev, frequency: newFrequency };
+                                        if (newFrequency === 'weekly' && (!updated.daysOfWeek || updated.daysOfWeek.length === 0) && startTime) {
+                                            const dayOfWeek = new Date(startTime).getUTCDay();
+                                            updated.daysOfWeek = [dayOfWeek];
+                                        }
+                                        return updated;
+                                    });
+                                }}
+                                className="px-2 py-1 bg-white border border-slate-300 rounded-md shadow-sm sm:text-sm">
                                 <option value="daily">dia(s)</option>
                                 <option value="weekly">semana(s)</option>
                                 <option value="monthly">mês(es)</option>

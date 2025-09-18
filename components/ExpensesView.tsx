@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Expense, ExpenseStatus, LayoutView, ExpenseCategory, ExpenseType, ExpenseEntityType } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
 import Pagination from './Pagination';
 import ViewSwitcher from './ViewSwitcher';
-import { EditIcon, DeleteIcon, PlusIcon, SettingsIcon, ChevronDownIcon } from './Icons';
+import { EditIcon, DeleteIcon, PlusIcon, SettingsIcon } from './Icons';
 
 interface FinancesViewProps {
   expenses: Expense[];
@@ -14,13 +14,6 @@ interface FinancesViewProps {
   setExpenseCategories: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
   executiveId: string;
 }
-
-type ChartData = {
-    [month: string]: {
-        'Pessoa Física': { 'A pagar': number; 'A receber': number; };
-        'Pessoa Jurídica': { 'A pagar': number; 'A receber': number; };
-    }
-};
 
 // --- Category Management Components ---
 const CategoryForm: React.FC<{ category: Partial<ExpenseCategory>, onSave: (cat: ExpenseCategory) => void, onCancel: () => void }> = ({ category, onSave, onCancel }) => {
@@ -201,8 +194,8 @@ const FinancesView: React.FC<FinancesViewProps> = ({ expenses, setExpenses, expe
     const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
     const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
     const [isCategoryModalOpen, setCategoryModalOpen] = useState(false);
-    
-    // Filters
+
+    // Filters for the table
     const [filterType, setFilterType] = useState<ExpenseType | 'all'>('all');
     const [filterEntityType, setFilterEntityType] = useState<ExpenseEntityType | 'all'>('all');
     const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -210,49 +203,8 @@ const FinancesView: React.FC<FinancesViewProps> = ({ expenses, setExpenses, expe
     const [layout, setLayout] = useLocalStorage<LayoutView>('financesViewLayout', 'table');
     const [limit, setLimit] = useLocalStorage('financesViewLimit', 10);
     const [currentPage, setCurrentPage] = useState(1);
-    
-    // Dashboard State
-    const [isDashboardOpen, setDashboardOpen] = useState(true);
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-    const [chartStartDate, setChartStartDate] = useState(firstDayOfMonth);
-    const [chartEndDate, setChartEndDate] = useState(today.toISOString().split('T')[0]);
-    const [chartData, setChartData] = useState<ChartData | null>(null);
 
-    const generateChartData = useCallback(() => {
-        const filtered = expenses.filter(e => {
-            const expenseDate = new Date(e.expenseDate + 'T00:00:00'); 
-            const start = new Date(chartStartDate + 'T00:00:00');
-            const end = new Date(chartEndDate + 'T00:00:00');
-            return expenseDate >= start && expenseDate <= end;
-        });
-
-        const data: ChartData = {};
-
-        filtered.forEach(expense => {
-            const month = expense.expenseDate.substring(0, 7); // "YYYY-MM"
-            if (!data[month]) {
-                data[month] = {
-                    'Pessoa Física': { 'A pagar': 0, 'A receber': 0 },
-                    'Pessoa Jurídica': { 'A pagar': 0, 'A receber': 0 }
-                };
-            }
-            data[month][expense.entityType][expense.type] += expense.amount;
-        });
-        
-        const sortedData: ChartData = Object.keys(data).sort().reduce(
-            (obj, key) => { obj[key] = data[key]; return obj; }, {} as ChartData
-        );
-
-        setChartData(sortedData);
-    }, [expenses, chartStartDate, chartEndDate]);
-    
-    useEffect(() => {
-        generateChartData();
-    }, [generateChartData]);
-
-
-    const filteredExpenses = useMemo(() => {
+    const filteredExpensesForTable = useMemo(() => {
       return [...expenses]
         .sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime())
         .filter(e => filterType === 'all' || e.type === filterType)
@@ -263,8 +215,8 @@ const FinancesView: React.FC<FinancesViewProps> = ({ expenses, setExpenses, expe
     const paginatedExpenses = useMemo(() => {
         const start = (currentPage - 1) * limit;
         const end = start + limit;
-        return filteredExpenses.slice(start, end);
-    }, [filteredExpenses, currentPage, limit]);
+        return filteredExpensesForTable.slice(start, end);
+    }, [filteredExpensesForTable, currentPage, limit]);
 
     useEffect(() => {
         setCurrentPage(1);
@@ -302,20 +254,6 @@ const FinancesView: React.FC<FinancesViewProps> = ({ expenses, setExpenses, expe
     const formatDate = (dateString: string) => new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR', { year: 'numeric', month: 'short', day: 'numeric' });
     const formatCurrency = (amount: number) => amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     
-    const maxChartValue = useMemo(() => {
-        if (!chartData) return 1;
-        const max = Math.max(1, ...Object.values(chartData).flatMap(d => [
-            d['Pessoa Física']['A pagar'] + d['Pessoa Física']['A receber'], 
-            d['Pessoa Jurídica']['A pagar'] + d['Pessoa Jurídica']['A receber']
-        ]));
-        return max;
-    }, [chartData]);
-    
-    const formatMonthForChart = (monthStr: string) => {
-        const [year, month] = monthStr.split('-');
-        return new Date(parseInt(year), parseInt(month) - 1, 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-    };
-
     const renderItems = () => {
         if (paginatedExpenses.length === 0) return <div className="col-span-full text-center p-6 bg-white rounded-xl shadow-md"><p className="text-slate-500">Nenhum lançamento encontrado para os filtros aplicados.</p></div>;
         switch (layout) {
@@ -435,79 +373,6 @@ const FinancesView: React.FC<FinancesViewProps> = ({ expenses, setExpenses, expe
                 </div>
             </header>
 
-            <div className="bg-white rounded-xl shadow-md">
-                <button onClick={() => setDashboardOpen(!isDashboardOpen)} className="w-full flex justify-between items-center p-4">
-                    <h3 className="text-xl font-bold text-slate-700">Dashboard Financeiro</h3>
-                    <ChevronDownIcon className={`w-6 h-6 text-slate-500 transition-transform ${isDashboardOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {isDashboardOpen && (
-                    <div className="p-4 border-t border-slate-200 space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label htmlFor="chart-start-date" className="block text-sm font-medium text-slate-700">De</label>
-                                <input type="date" id="chart-start-date" value={chartStartDate} onChange={e => setChartStartDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm" />
-                            </div>
-                            <div>
-                                <label htmlFor="chart-end-date" className="block text-sm font-medium text-slate-700">Até</label>
-                                <input type="date" id="chart-end-date" value={chartEndDate} onChange={e => setChartEndDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm" />
-                            </div>
-                            <div className="self-end">
-                                <button onClick={generateChartData} className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition">Atualizar Gráfico</button>
-                            </div>
-                        </div>
-                        
-                        {chartData && Object.keys(chartData).length > 0 ? (
-                            <div className="pt-4">
-                                <div className="flex justify-center items-center gap-6 mb-4 text-sm">
-                                     <div className="flex items-center gap-2"><span className="w-4 h-4 bg-red-500 rounded-sm"></span> A Pagar</div>
-                                     <div className="flex items-center gap-2"><span className="w-4 h-4 bg-green-500 rounded-sm"></span> A Receber</div>
-                                     <div className="flex items-center gap-2"><span className="w-4 h-4 bg-slate-300 rounded-sm"></span> Pessoa Física</div>
-                                     <div className="flex items-center gap-2"><span className="w-4 h-4 bg-slate-500 rounded-sm"></span> Pessoa Jurídica</div>
-                                </div>
-                                <div className="flex h-80 space-x-2 md:space-x-4 items-end p-4 border rounded-lg bg-slate-50 overflow-x-auto">
-                                    {Object.entries(chartData).map(([month, data]) => {
-                                        const pfTotal = data['Pessoa Física']['A pagar'] + data['Pessoa Física']['A receber'];
-                                        const pjTotal = data['Pessoa Jurídica']['A pagar'] + data['Pessoa Jurídica']['A receber'];
-                                        return (
-                                        <div key={month} className="flex flex-col items-center flex-1 min-w-[100px]">
-                                            <div className="flex items-end h-full gap-1 w-full justify-center">
-                                                {/* Bar for Pessoa Física */}
-                                                <div className="w-full rounded-t-md relative group bg-slate-300" style={{ height: `${(pfTotal / maxChartValue) * 100}%` }}>
-                                                    <div className="absolute bottom-0 w-full flex flex-col justify-end">
-                                                        <div className="bg-green-500" style={{ height: `${pfTotal > 0 ? (data['Pessoa Física']['A receber'] / pfTotal) * 100 : 0}%` }}></div>
-                                                        <div className="bg-red-500" style={{ height: `${pfTotal > 0 ? (data['Pessoa Física']['A pagar'] / pfTotal) * 100 : 0}%` }}></div>
-                                                    </div>
-                                                    <div className="absolute bottom-full mb-2 w-48 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs rounded-md p-2 opacity-0 group-hover:opacity-100 transition pointer-events-none">
-                                                        <p className="font-bold">Pessoa Física</p>
-                                                        <p>A Receber: {formatCurrency(data['Pessoa Física']['A receber'])}</p>
-                                                        <p>A Pagar: {formatCurrency(data['Pessoa Física']['A pagar'])}</p>
-                                                    </div>
-                                                </div>
-                                                {/* Bar for Pessoa Jurídica */}
-                                                <div className="w-full rounded-t-md relative group bg-slate-500" style={{ height: `${(pjTotal / maxChartValue) * 100}%` }}>
-                                                    <div className="absolute bottom-0 w-full flex flex-col justify-end">
-                                                        <div className="bg-green-500" style={{ height: `${pjTotal > 0 ? (data['Pessoa Jurídica']['A receber'] / pjTotal) * 100 : 0}%` }}></div>
-                                                        <div className="bg-red-500" style={{ height: `${pjTotal > 0 ? (data['Pessoa Jurídica']['A pagar'] / pjTotal) * 100 : 0}%` }}></div>
-                                                    </div>
-                                                    <div className="absolute bottom-full mb-2 w-48 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs rounded-md p-2 opacity-0 group-hover:opacity-100 transition pointer-events-none">
-                                                        <p className="font-bold">Pessoa Jurídica</p>
-                                                        <p>A Receber: {formatCurrency(data['Pessoa Jurídica']['A receber'])}</p>
-                                                        <p>A Pagar: {formatCurrency(data['Pessoa Jurídica']['A pagar'])}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <span className="text-xs text-slate-500 mt-2 whitespace-nowrap">{formatMonthForChart(month)}</span>
-                                        </div>
-                                    )})}
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="text-center text-slate-500 py-10">Nenhum dado financeiro encontrado para o período selecionado.</p>
-                        )}
-                    </div>
-                )}
-            </div>
-            
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 p-4 bg-white rounded-xl shadow-md">
                 <ViewSwitcher layout={layout} setLayout={setLayout} />
                 <div className="flex items-center gap-2 text-sm">
@@ -544,9 +409,9 @@ const FinancesView: React.FC<FinancesViewProps> = ({ expenses, setExpenses, expe
 
              <div>
                 {renderItems()}
-                {filteredExpenses.length > 0 && (
+                {filteredExpensesForTable.length > 0 && (
                      <div className="mt-6">
-                        <Pagination currentPage={currentPage} totalItems={filteredExpenses.length} itemsPerPage={limit} onPageChange={setCurrentPage} />
+                        <Pagination currentPage={currentPage} totalItems={filteredExpensesForTable.length} itemsPerPage={limit} onPageChange={setCurrentPage} />
                     </div>
                 )}
             </div>

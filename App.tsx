@@ -79,7 +79,7 @@ const App: React.FC = () => {
   
   const initialUsers: User[] = useMemo(() => [
     // Static master user
-    { id: 'user_master', fullName: 'Master User', role: 'master' },
+    { id: 'user_master', fullName: 'Usuário Master', role: 'master' },
     // Dynamic users from initial data
     ...initialOrganizations.map(org => ({
       id: `user_admin_${org.id}`,

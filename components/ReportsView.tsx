@@ -10,7 +10,7 @@ interface ReportsViewProps {
 }
 
 type ReportData = {
-    'Tipo de Dado': string;
+    'Tipo': string;
     'Executivo': string;
     'Data': string;
     'Descrição/Título': string;
@@ -76,7 +76,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                 .forEach(e => {
                     const exec = executives.find(ex => ex.id === e.executiveId);
                     generatedData.push({
-                        'Tipo de Dado': 'Evento',
+                        'Tipo': 'Evento',
                         'Executivo': exec?.fullName || 'N/A',
                         'Data': new Date(e.startTime).toLocaleString('pt-BR'),
                         'Descrição/Título': e.title,
@@ -100,7 +100,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                 .forEach(e => {
                     const exec = executives.find(ex => ex.id === e.executiveId);
                     generatedData.push({
-                        'Tipo de Dado': `Financeiro (${e.type})`,
+                        'Tipo': `Financeiro (${e.type})`,
                         'Executivo': exec?.fullName || 'N/A',
                         'Data': new Date(e.expenseDate + 'T00:00:00').toLocaleDateString('pt-BR'),
                         'Descrição/Título': e.description,
@@ -125,7 +125,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                 .forEach(t => {
                     const exec = executives.find(ex => ex.id === t.executiveId);
                     generatedData.push({
-                        'Tipo de Dado': 'Tarefa',
+                        'Tipo': 'Tarefa',
                         'Executivo': exec?.fullName || 'N/A',
                         'Data': new Date(t.dueDate + 'T00:00:00').toLocaleDateString('pt-BR'),
                         'Descrição/Título': t.title,
@@ -143,12 +143,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                 .forEach(c => {
                     const exec = executives.find(ex => ex.id === c.executiveId);
                     generatedData.push({
-                        'Tipo de Dado': 'Contato',
+                        'Tipo': 'Contato',
                         'Executivo': exec?.fullName || 'N/A',
                         'Data': '-',
                         'Descrição/Título': c.fullName,
                         'Detalhe 1': `Empresa: ${c.company || 'N/A'}`,
-                        'Detalhe 2': `Email: ${c.email || 'N/A'}`,
+                        'Detalhe 2': `E-mail: ${c.email || 'N/A'}`,
                         sortDate: new Date(0) // epoch to sort them first
                     });
                 });
