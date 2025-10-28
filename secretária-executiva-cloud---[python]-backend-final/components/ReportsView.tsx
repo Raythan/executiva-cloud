@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { Executive, Event, Expense, Task, Contact } from '../types';
+import { Executive, Event, Expense, Task, Contact, AllDataBackup } from '../types';
 
 interface ReportsViewProps {
-  executives: Executive[];
-  events: Event[];
-  expenses: Expense[];
-  tasks: Task[];
-  contacts: Contact[];
+  allData: AllDataBackup;
 }
 
 type ReportData = {
@@ -22,7 +18,8 @@ type ReportData = {
 // Internal type to hold a sortable date
 type ReportDataInternal = ReportData & { sortDate: Date };
 
-const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses, tasks, contacts }) => {
+const ReportsView: React.FC<ReportsViewProps> = ({ allData }) => {
+    const { executives, events, expenses, tasks, contacts } = allData;
     const [selectedExecIds, setSelectedExecIds] = useState<string[]>([]);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -211,7 +208,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                                     id="exec-all"
                                     checked={selectedExecIds.length === 0}
                                     onChange={() => setSelectedExecIds([])}
-                                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                    className="form-checkbox"
                                 />
                                 <label htmlFor="exec-all" className="ml-3 block text-sm font-semibold text-slate-800">Todos os Executivos</label>
                             </div>
@@ -222,7 +219,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                                         id={`exec-${exec.id}`}
                                         checked={selectedExecIds.includes(exec.id)}
                                         onChange={() => handleExecToggle(exec.id)}
-                                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        className="form-checkbox"
                                     />
                                     <label htmlFor={`exec-${exec.id}`} className="ml-3 block text-sm text-slate-600">{exec.fullName}</label>
                                 </div>
@@ -235,12 +232,12 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                          <label className="block text-base font-semibold text-slate-800 mb-2">Período</label>
                          <div className="space-y-4">
                             <div>
-                                <label htmlFor="start-date" className="block text-sm font-medium text-slate-700">Data de Início</label>
-                                <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <label htmlFor="start-date" className="form-label">Data de Início</label>
+                                <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="form-input" />
                             </div>
                             <div>
-                                <label htmlFor="end-date" className="block text-sm font-medium text-slate-700">Data de Fim</label>
-                                <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <label htmlFor="end-date" className="form-label">Data de Fim</label>
+                                <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="form-input" />
                             </div>
                         </div>
                     </div>
@@ -255,7 +252,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                                         id={`type-${key}`}
                                         checked={dataTypes[key as keyof typeof dataTypes]}
                                         onChange={() => handleDataTypeChange(key as keyof typeof dataTypes)}
-                                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                        className="form-checkbox"
                                     />
                                     <label htmlFor={`type-${key}`} className="ml-3 block text-sm text-slate-600">{dataTypeLabels[key]}</label>
                                 </div>
@@ -264,7 +261,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                     </div>
                 </div>
                 <div className="mt-6 pt-6 border-t border-slate-200 flex justify-end">
-                    <button onClick={handleGenerateReport} className="px-6 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition">
+                    <button onClick={handleGenerateReport} className="btn btn-primary">
                         Gerar Relatório
                     </button>
                 </div>
@@ -281,7 +278,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ executives, events, expenses,
                                 </p>
                             )}
                         </div>
-                        <button onClick={handleExportCSV} disabled={fullReport.length === 0} className="px-4 py-2 bg-green-600 text-white rounded-md shadow-sm hover:bg-green-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed text-sm">
+                        <button onClick={handleExportCSV} disabled={fullReport.length === 0} className="btn btn-success btn-sm">
                             Exportar para CSV
                         </button>
                     </div>
