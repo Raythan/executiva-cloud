@@ -1,203 +1,292 @@
-
 import React, { useState } from 'react';
-import { Organization, Department } from '../types';
-import { api } from '../services/api';
+import { Organization, Department, Executive, User, Secretary, Event, Contact, Expense, Task, Document } from '../types';
 import Modal from './Modal';
 import ConfirmationModal from './ConfirmationModal';
-import { PlusIcon, EditIcon, DeleteIcon } from './Icons';
+import { EditIcon, DeleteIcon, PlusIcon } from './Icons';
 
 interface OrganizationsViewProps {
   organizations: Organization[];
+  setOrganizations: React.Dispatch<React.SetStateAction<Organization[]>>;
   departments: Department[];
-  refreshData: () => Promise<void>;
+  setDepartments: React.Dispatch<React.SetStateAction<Department[]>>;
+  executives: Executive[];
+  setExecutives: React.Dispatch<React.SetStateAction<Executive[]>>;
+  secretaries: Secretary[];
+  setSecretaries: React.Dispatch<React.SetStateAction<Secretary[]>>;
+  setEvents: React.Dispatch<React.SetStateAction<Event[]>>;
+  setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
+  setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  setDocuments: React.Dispatch<React.SetStateAction<Document[]>>;
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
-const OrganizationsView: React.FC<OrganizationsViewProps> = ({ organizations, departments, refreshData }) => {
-    // Organization State
-    const [isOrgModalOpen, setOrgModalOpen] = useState(false);
-    const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
-    const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
-    const [orgFormData, setOrgFormData] = useState({ name: '' });
+const OrganizationForm: React.FC<{ organization: Partial<Organization>, onSave: (organization: Organization) => void, onCancel: () => void }> = ({ organization, onSave, onCancel }) => {
+    const [name, setName] = useState(organization.name || '');
 
-    // Department State
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name) return;
+        onSave({
+            id: organization.id || `org_${new Date().getTime()}`,
+            name,
+        });
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+             <div>
+                <label htmlFor="name" className="block text-sm font-medium text-slate-700">Nome da Organização</label>
+                <input type="text" id="name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar Organização</button>
+            </div>
+        </form>
+    );
+};
+
+const DepartmentForm: React.FC<{ department: Partial<Department>, onSave: (department: Department) => void, onCancel: () => void }> = ({ department, onSave, onCancel }) => {
+    const [name, setName] = useState(department.name || '');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name || !department.organizationId) return;
+        onSave({
+            id: department.id || `dept_${new Date().getTime()}`,
+            name,
+            organizationId: department.organizationId,
+        });
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+             <div>
+                <label htmlFor="dept-name" className="block text-sm font-medium text-slate-700">Nome do Departamento</label>
+                <input type="text" id="dept-name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar Departamento</button>
+            </div>
+        </form>
+    );
+};
+
+
+const OrganizationsView: React.FC<OrganizationsViewProps> = ({ 
+    organizations, setOrganizations, 
+    departments, setDepartments, 
+    executives, setExecutives, 
+    secretaries, setSecretaries,
+    setEvents, setContacts, setExpenses, setTasks,
+    setDocuments, setUsers 
+}) => {
+    const [isOrgModalOpen, setOrgModalOpen] = useState(false);
+    const [editingOrganization, setEditingOrganization] = useState<Partial<Organization> | null>(null);
     const [isDeptModalOpen, setDeptModalOpen] = useState(false);
-    const [editingDept, setEditingDept] = useState<Department | null>(null);
+    const [editingDepartment, setEditingDepartment] = useState<Partial<Department> | null>(null);
+
+    const [orgToDelete, setOrgToDelete] = useState<Organization | null>(null);
     const [deptToDelete, setDeptToDelete] = useState<Department | null>(null);
-    const [deptFormData, setDeptFormData] = useState({ name: '', organizationId: '' });
-    
+
     // Organization Handlers
-    const handleOpenOrgModal = (org: Organization | null) => {
-        setEditingOrg(org);
-        setOrgFormData({ name: org ? org.name : '' });
+    const handleAddOrganization = () => {
+        setEditingOrganization({});
         setOrgModalOpen(true);
     };
-    
-    const handleSaveOrg = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            if (editingOrg) {
-                await api.put(`/organizations/${editingOrg.id}`, orgFormData);
-            } else {
-                await api.post('/organizations', orgFormData);
-            }
-            await refreshData();
-            setOrgModalOpen(false);
-        } catch (error) {
-            console.error("Erro ao salvar organização:", error);
-            alert("Não foi possível salvar a organização.");
-        }
+    const handleEditOrganization = (organization: Organization) => {
+        setEditingOrganization(organization);
+        setOrgModalOpen(true);
     };
-    
-    const handleDeleteOrg = async () => {
+    const handleDeleteOrganization = (org: Organization) => {
+        setOrgToDelete(org);
+    };
+    const confirmDeleteOrganization = () => {
         if (!orgToDelete) return;
-        try {
-            await api.delete(`/organizations/${orgToDelete.id}`);
-            await refreshData();
-            setOrgToDelete(null);
-        } catch (error) {
-            console.error("Erro ao deletar organização:", error);
-            alert("Não foi possível deletar a organização.");
+
+        const orgId = orgToDelete.id;
+
+        // 1. Find all executives belonging to this organization to cascade their deletion
+        const executivesToDelete = executives.filter(e => e.organizationId === orgId);
+        const executivesToDeleteIds = executivesToDelete.map(e => e.id);
+
+        // 2. Delete the organization
+        setOrganizations(orgs => orgs.filter(o => o.id !== orgId));
+
+        // 3. Delete all departments of the organization
+        setDepartments(depts => depts.filter(d => d.organizationId !== orgId));
+
+        // 4. Delete all related executives
+        setExecutives(execs => execs.filter(e => e.organizationId !== orgId));
+
+        // 5. Delete all data related to the deleted executives
+        setEvents(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+        setContacts(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+        setExpenses(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+        setTasks(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+        setDocuments(prev => prev.filter(item => !executivesToDeleteIds.includes(item.executiveId)));
+
+        // 6. Unlink deleted executives from any secretaries
+        setSecretaries(secs => secs.map(sec => ({
+            ...sec,
+            executiveIds: sec.executiveIds.filter(execId => !executivesToDeleteIds.includes(execId))
+        })));
+
+        // 7. Delete all users (admin for the org, and users for all deleted executives)
+        setUsers(users => users.filter(u => {
+            if (u.organizationId === orgId) return false; // Remove org admin
+            if (u.executiveId && executivesToDeleteIds.includes(u.executiveId)) return false; // Remove executive users
+            return true;
+        }));
+
+        setOrgToDelete(null);
+    };
+    const handleSaveOrganization = (organization: Organization) => {
+        if (editingOrganization && editingOrganization.id) {
+            setOrganizations(orgs => orgs.map(o => o.id === organization.id ? organization : o));
+            setUsers(users => users.map(u => u.organizationId === organization.id ? { ...u, fullName: `Admin ${organization.name}` } : u));
+        } else {
+            setOrganizations(orgs => [...orgs, organization]);
+            setUsers(users => [...users, {
+                id: `user_admin_${organization.id}`,
+                fullName: `Admin ${organization.name}`,
+                role: 'admin',
+                organizationId: organization.id
+            }]);
         }
+        setOrgModalOpen(false);
+        setEditingOrganization(null);
     };
 
     // Department Handlers
-    const handleOpenDeptModal = (dept: Department | null) => {
-        setEditingDept(dept);
-        setDeptFormData({ 
-            name: dept ? dept.name : '',
-            organizationId: dept ? dept.organizationId : (organizations[0]?.id || '')
-        });
+    const handleAddDepartment = (organizationId: string) => {
+        setEditingDepartment({ organizationId });
         setDeptModalOpen(true);
     };
-
-    const handleSaveDept = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            if (editingDept) {
-                await api.put(`/departments/${editingDept.id}`, deptFormData);
-            } else {
-                await api.post('/departments', deptFormData);
-            }
-            await refreshData();
-            setDeptModalOpen(false);
-        } catch (error) {
-            console.error("Erro ao salvar departamento:", error);
-            alert("Não foi possível salvar o departamento.");
-        }
+    const handleEditDepartment = (department: Department) => {
+        setEditingDepartment(department);
+        setDeptModalOpen(true);
     };
-
-    const handleDeleteDept = async () => {
+    const handleDeleteDepartment = (dept: Department) => {
+        setDeptToDelete(dept);
+    };
+    const confirmDeleteDepartment = () => {
         if (!deptToDelete) return;
-        try {
-            await api.delete(`/departments/${deptToDelete.id}`);
-            await refreshData();
-            setDeptToDelete(null);
-        } catch (error) {
-            console.error("Erro ao deletar departamento:", error);
-            alert("Não foi possível deletar o departamento.");
-        }
+        const id = deptToDelete.id;
+        setDepartments(depts => depts.filter(d => d.id !== id));
+        setExecutives(execs => execs.map(e => e.departmentId === id ? { ...e, departmentId: undefined } : e));
+        setDeptToDelete(null);
+    };
+    const handleSaveDepartment = (department: Department) => {
+        setDepartments(depts => {
+            if (editingDepartment && editingDepartment.id) {
+                return depts.map(d => d.id === department.id ? department : d);
+            }
+            return [...depts, department];
+        });
+        setDeptModalOpen(false);
+        setEditingDepartment(null);
     };
 
-  return (
-    <div className="space-y-8 animate-fade-in">
-      <header>
-        <h2 className="text-3xl font-bold text-slate-800">Organizações e Departamentos</h2>
-        <p className="text-slate-500 mt-1">Gerencie a estrutura da sua empresa.</p>
-      </header>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Organizations Panel */}
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-slate-700">Organizações</h3>
-            <button onClick={() => handleOpenOrgModal(null)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition text-sm">
-                <PlusIcon /> Adicionar
-            </button>
-          </div>
-          <ul className="space-y-2">
-            {organizations.map(org => (
-              <li key={org.id} className="p-3 bg-slate-50 rounded-md flex justify-between items-center">
-                <span>{org.name}</span>
-                <div className="space-x-2">
-                    <button onClick={() => handleOpenOrgModal(org)} className="p-1 text-slate-500 hover:text-indigo-600"><EditIcon /></button>
-                    <button onClick={() => setOrgToDelete(org)} className="p-1 text-slate-500 hover:text-red-600"><DeleteIcon /></button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        
-        {/* Departments Panel */}
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-slate-700">Departamentos</h3>
-             <button onClick={() => handleOpenDeptModal(null)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition text-sm">
-                <PlusIcon /> Adicionar
-            </button>
-          </div>
-          <ul className="space-y-2">
-            {departments.map(dep => {
-              const org = organizations.find(o => o.id === dep.organizationId);
-              return (
-                <li key={dep.id} className="p-3 bg-slate-50 rounded-md flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold">{dep.name}</p>
-                    <p className="text-sm text-slate-500">{org?.name || 'Organização não encontrada'}</p>
-                  </div>
-                  <div className="space-x-2">
-                    <button onClick={() => handleOpenDeptModal(dep)} className="p-1 text-slate-500 hover:text-indigo-600"><EditIcon /></button>
-                    <button onClick={() => setDeptToDelete(dep)} className="p-1 text-slate-500 hover:text-red-600"><DeleteIcon /></button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </div>
-      
-      {/* Organization Modal */}
-      {isOrgModalOpen && (
-        <Modal title={editingOrg ? "Editar Organização" : "Nova Organização"} onClose={() => setOrgModalOpen(false)}>
-            <form onSubmit={handleSaveOrg} className="space-y-4">
-                <div>
-                    <label htmlFor="orgName" className="block text-sm font-medium text-slate-700">Nome da Organização</label>
-                    <input type="text" id="orgName" value={orgFormData.name} onChange={e => setOrgFormData({...orgFormData, name: e.target.value})} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
-                </div>
-                <div className="flex justify-end pt-4 gap-3">
-                    <button type="button" onClick={() => setOrgModalOpen(false)} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar</button>
-                </div>
-            </form>
-        </Modal>
-      )}
 
-      {/* Department Modal */}
-       {isDeptModalOpen && (
-        <Modal title={editingDept ? "Editar Departamento" : "Novo Departamento"} onClose={() => setDeptModalOpen(false)}>
-            <form onSubmit={handleSaveDept} className="space-y-4">
+    return (
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <label htmlFor="deptName" className="block text-sm font-medium text-slate-700">Nome do Departamento</label>
-                    <input type="text" id="deptName" value={deptFormData.name} onChange={e => setDeptFormData({...deptFormData, name: e.target.value})} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required />
+                    <h2 className="text-3xl font-bold text-slate-800">Gerenciar Organizações</h2>
+                    <p className="text-slate-500 mt-1">Adicione ou edite as empresas e seus respectivos departamentos.</p>
                 </div>
-                 <div>
-                    <label htmlFor="deptOrg" className="block text-sm font-medium text-slate-700">Organização</label>
-                    <select id="deptOrg" value={deptFormData.organizationId} onChange={e => setDeptFormData({...deptFormData, organizationId: e.target.value})} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                        {organizations.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}
-                    </select>
-                </div>
-                <div className="flex justify-end pt-4 gap-3">
-                    <button type="button" onClick={() => setDeptModalOpen(false)} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition">Cancelar</button>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">Salvar</button>
-                </div>
-            </form>
-        </Modal>
-      )}
+                <button onClick={handleAddOrganization} className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 transition duration-150">
+                    <PlusIcon />
+                    Nova Organização
+                </button>
+            </div>
 
-      {/* Confirmation Modals */}
-      <ConfirmationModal isOpen={!!orgToDelete} onClose={() => setOrgToDelete(null)} onConfirm={handleDeleteOrg} title="Confirmar Exclusão" message={`Tem certeza de que deseja excluir a organização "${orgToDelete?.name}"? Esta ação não pode ser desfeita.`} />
-      <ConfirmationModal isOpen={!!deptToDelete} onClose={() => setDeptToDelete(null)} onConfirm={handleDeleteDept} title="Confirmar Exclusão" message={`Tem certeza de que deseja excluir o departamento "${deptToDelete?.name}"?`} />
-    </div>
-  );
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {organizations.map(org => {
+                    const orgDepartments = departments.filter(d => d.organizationId === org.id);
+                    return (
+                        <div key={org.id} className="bg-white rounded-xl shadow-md flex flex-col">
+                            <header className="flex items-center justify-between p-4 border-b border-slate-200">
+                                <h3 className="text-lg font-bold text-slate-800">{org.name}</h3>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => handleEditOrganization(org)} className="p-2 text-slate-500 hover:text-indigo-600 rounded-full hover:bg-slate-100 transition" aria-label="Editar organização">
+                                        <EditIcon />
+                                    </button>
+                                    <button onClick={() => handleDeleteOrganization(org)} className="p-2 text-slate-500 hover:text-red-600 rounded-full hover:bg-slate-100 transition" aria-label="Excluir organização">
+                                        <DeleteIcon />
+                                    </button>
+                                </div>
+                            </header>
+                            <div className="p-4 flex-1">
+                                <h4 className="text-sm font-semibold text-slate-600 mb-2">Departamentos</h4>
+                                {orgDepartments.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {orgDepartments.map(dept => (
+                                            <li key={dept.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-md">
+                                                <p className="text-slate-700">{dept.name}</p>
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => handleEditDepartment(dept)} className="p-1 text-slate-400 hover:text-indigo-600" aria-label="Editar departamento"><EditIcon /></button>
+                                                    <button onClick={() => handleDeleteDepartment(dept)} className="p-1 text-slate-400 hover:text-red-600" aria-label="Excluir departamento"><DeleteIcon /></button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-slate-500 text-center py-4">Nenhum departamento cadastrado.</p>
+                                )}
+                            </div>
+                            <footer className="p-4 border-t border-slate-200">
+                                <button onClick={() => handleAddDepartment(org.id)} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 transition">
+                                    <PlusIcon /> Adicionar Departamento
+                                </button>
+                            </footer>
+                        </div>
+                    );
+                })}
+
+                {organizations.length === 0 && (
+                    <div className="lg:col-span-2 text-center p-6 bg-white rounded-xl shadow-md">
+                        <p className="text-slate-500">Nenhuma organização cadastrada.</p>
+                    </div>
+                )}
+            </div>
+
+            {isOrgModalOpen && (
+                <Modal title={editingOrganization?.id ? 'Editar Organização' : 'Nova Organização'} onClose={() => {setOrgModalOpen(false); setEditingOrganization(null)}}>
+                    <OrganizationForm organization={editingOrganization || {}} onSave={handleSaveOrganization} onCancel={() => { setOrgModalOpen(false); setEditingOrganization(null); }} />
+                </Modal>
+            )}
+
+            {isDeptModalOpen && (
+                 <Modal title={editingDepartment?.id ? 'Editar Departamento' : 'Novo Departamento'} onClose={() => {setDeptModalOpen(false); setEditingDepartment(null)}}>
+                    <DepartmentForm department={editingDepartment || {}} onSave={handleSaveDepartment} onCancel={() => { setDeptModalOpen(false); setEditingDepartment(null); }} />
+                </Modal>
+            )}
+
+            {orgToDelete && (
+                <ConfirmationModal
+                    isOpen={!!orgToDelete}
+                    onClose={() => setOrgToDelete(null)}
+                    onConfirm={confirmDeleteOrganization}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir a organização ${orgToDelete.name}? TODOS os seus dados (departamentos, executivos, atividades, etc) e usuários associados serão permanentemente removidos.`}
+                />
+            )}
+            
+            {deptToDelete && (
+                 <ConfirmationModal
+                    isOpen={!!deptToDelete}
+                    onClose={() => setDeptToDelete(null)}
+                    onConfirm={confirmDeleteDepartment}
+                    title="Confirmar Exclusão"
+                    message={`Tem certeza que deseja excluir o departamento ${deptToDelete.name}? Os executivos associados serão desvinculados.`}
+                />
+            )}
+        </div>
+    );
 };
 
 export default OrganizationsView;

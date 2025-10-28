@@ -81,7 +81,6 @@ export interface User {
   organizationId?: string; // for admin
   executiveId?: string;    // for executive
   secretaryId?: string;    // for secretary
-  executiveIds?: string[];
 }
 
 export interface EventType {
@@ -112,6 +111,7 @@ export interface Event {
   recurrence?: RecurrenceRule;
 }
 
+// FIX: Add missing 'Appointment' type to resolve compilation error in components/AppointmentsView.tsx.
 export interface Appointment {
   id: string;
   title: string;
@@ -137,20 +137,9 @@ export interface Contact {
   executiveId: string; // UUID
 }
 
-// FIX: Changed type aliases to string enums to be used as values at runtime.
-export enum ExpenseStatus {
-  Pendente = 'Pendente',
-  Pago = 'Pago',
-  Recebida = 'Recebida',
-}
-export enum ExpenseType {
-  APagar = 'A pagar',
-  AReceber = 'A receber',
-}
-export enum ExpenseEntityType {
-  PessoaFisica = 'Pessoa Física',
-  PessoaJuridica = 'Pessoa Jurídica',
-}
+export type ExpenseStatus = 'Pendente' | 'Pago' | 'Recebida';
+export type ExpenseType = 'A pagar' | 'A receber';
+export type ExpenseEntityType = 'Pessoa Física' | 'Pessoa Jurídica';
 
 export interface ExpenseCategory {
   id: string;
