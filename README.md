@@ -1,20 +1,48 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Secretária Executiva Cloud - Pacote de Implantação
 
-# Run and deploy your AI Studio app
+Este pacote contém tudo o que é necessário para implantar a aplicação Secretária Executiva Cloud usando Docker.
 
-This contains everything you need to run your app locally.
+## Pré-requisitos
 
-View your app in AI Studio: https://ai.studio/apps/drive/15qIBePam86QOfqR7It5prxJ_sEWWp0Up
+- Docker e Docker Compose instalados no seu servidor/host.
 
-## Run Locally
+## Como Implantar
 
-**Prerequisites:**  Node.js
+Siga os passos abaixo no diretório onde este arquivo `README.md` está localizado.
 
+### 1. Construir e Iniciar o Serviço
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+O `docker-compose` cuidará de construir a imagem do Docker a partir do `Dockerfile` e iniciar o contêiner. Execute o seguinte comando:
+
+```bash
+docker-compose up --build -d
+```
+
+- `--build`: Garante que a imagem Docker seja (re)construída com base no código atual.
+- `-d`: (detached mode) Executa o contêiner em segundo plano.
+
+### 2. Acessando a Aplicação
+
+Após a conclusão do comando, a aplicação estará disponível no seu navegador no seguinte endereço:
+
+[http://localhost:8000](http://localhost:8000)
+
+(Se você estiver implantando em um servidor remoto, substitua `localhost` pelo endereço IP do servidor).
+
+### 3. Verificando os Logs (Opcional)
+
+Se precisar verificar os logs da aplicação em execução, use o comando:
+
+```bash
+docker-compose logs -f
+```
+
+### 4. Parando a Aplicação
+
+Para parar o serviço, execute:
+
+```bash
+docker-compose down
+```
+
+Isso irá parar e remover o contêiner, mas seus dados do banco de dados serão preservados no volume `database` local, graças à configuração no `docker-compose.yml`.

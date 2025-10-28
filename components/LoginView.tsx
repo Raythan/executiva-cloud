@@ -1,11 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
 import { LogoIcon, ExecutivesIcon, SecretariesIcon, SettingsIcon, ChevronDownIcon } from './Icons';
-
-interface LoginViewProps {
-  users: User[];
-  onLogin: (user: User) => void;
-}
+import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 const getRoleIcon = (role: User['role'], className: string = 'w-5 h-5') => {
     switch(role) {
@@ -28,10 +26,29 @@ const getRoleDescription = (role: User['role']) => {
     }
 }
 
-const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
+const LoginView: React.FC = () => {
+    const { login } = useAuth();
+    const [users, setUsers] = useState<User[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(true);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const response = await api.get('/users');
+                setUsers(response.data);
+            } catch (err) {
+                setError('Falha ao carregar usuários. Verifique se o servidor backend está em execução.');
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchUsers();
+    }, []);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -48,9 +65,15 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
         setIsOpen(false);
     };
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         if (selectedUser) {
-            onLogin(selectedUser);
+            setError('');
+            try {
+                await login(selectedUser.id);
+            } catch (err) {
+                setError('Login falhou. Tente novamente.');
+                console.error(err);
+            }
         }
     };
 
@@ -72,7 +95,8 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
                             <button
                                 type="button"
                                 onClick={() => setIsOpen(!isOpen)}
-                                className="relative w-full bg-white border border-slate-300 rounded-md shadow-sm pl-4 pr-10 py-3 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                disabled={loading || !!error}
+                                className="relative w-full bg-white border border-slate-300 rounded-md shadow-sm pl-4 pr-10 py-3 text-left cursor-default focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-slate-100"
                                 aria-haspopup="listbox"
                                 aria-expanded={isOpen}
                                 aria-labelledby="profile-label"
@@ -83,7 +107,7 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
                                         <span className="block truncate font-semibold text-slate-800">{selectedUser.fullName}</span>
                                     </span>
                                 ) : (
-                                    <span className="block truncate text-slate-500">Selecione um perfil para acessar</span>
+                                    <span className="block truncate text-slate-500">{loading ? 'Carregando perfis...' : 'Selecione um perfil para acessar'}</span>
                                 )}
                                 <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                                     <ChevronDownIcon />
@@ -118,10 +142,12 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLogin }) => {
                             )}
                         </div>
                     </div>
+
+                    {error && <p className="text-sm text-red-600 text-center">{error}</p>}
                     
                     <button
                         onClick={handleLogin}
-                        disabled={!selectedUser}
+                        disabled={!selectedUser || loading}
                         className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors"
                     >
                         Entrar no Sistema

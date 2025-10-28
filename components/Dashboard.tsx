@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Executive, Event, Expense, Organization, Department, ExpenseCategory } from '../types';
 import { CalendarIcon, ExpensesIcon, ClockIcon, EmailIcon, PhoneIcon } from './Icons';
@@ -183,7 +184,6 @@ const Dashboard: React.FC<DashboardProps> = ({ events, expenses, selectedExecuti
                   <div key={expense.id} className="p-4 rounded-lg bg-slate-50 border-l-4 border-green-500 flex justify-between items-center">
                     <div>
                         <p className="font-semibold text-slate-800">{expense.description}</p>
-                        {/* FIX: Use categoryId to look up the category name from expenseCategories. */}
                         <p className="text-sm text-slate-500">{formatDate(expense.expenseDate)} - {category?.name || 'Sem categoria'}</p>
                     </div>
                     <p className="font-bold text-green-700">{formatCurrency(expense.amount)}</p>
