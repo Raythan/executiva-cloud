@@ -1,9 +1,15 @@
 import React, { useMemo } from 'react';
-import { AllDataBackup, Executive } from '../types';
+import { Executive, Event, Expense, Organization, Department, ExpenseCategory } from '../types';
 import { CalendarIcon, ExpensesIcon, ClockIcon, EmailIcon, PhoneIcon } from './Icons';
 
-interface DashboardProps extends AllDataBackup {
+interface DashboardProps {
+  executives: Executive[]; // This is visibleExecutives, so it's already filtered.
+  events: Event[];
+  expenses: Expense[];
   selectedExecutive: Executive | undefined;
+  organizations: Organization[];
+  departments: Department[];
+  expenseCategories: ExpenseCategory[];
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ events, expenses, selectedExecutive, organizations, departments, expenseCategories }) => {
@@ -45,7 +51,7 @@ const Dashboard: React.FC<DashboardProps> = ({ events, expenses, selectedExecuti
     if (!selectedExecutive) return '';
     const org = organizations.find(o => o.id === selectedExecutive.organizationId);
     const dept = departments.find(d => d.id === selectedExecutive.departmentId);
-    return org ? `${org.name}${dept ? ` / ${dept.name}` : ''}` : 'Organização não definida';
+    return org ? `${org.name}${dept ? ` / ${dept.name}` : ''}` : 'Empresa não definida';
   }, [selectedExecutive, organizations, departments]);
 
   return (
@@ -177,6 +183,7 @@ const Dashboard: React.FC<DashboardProps> = ({ events, expenses, selectedExecuti
                   <div key={expense.id} className="p-4 rounded-lg bg-slate-50 border-l-4 border-green-500 flex justify-between items-center">
                     <div>
                         <p className="font-semibold text-slate-800">{expense.description}</p>
+                        {/* FIX: Use categoryId to look up the category name from expenseCategories. */}
                         <p className="text-sm text-slate-500">{formatDate(expense.expenseDate)} - {category?.name || 'Sem categoria'}</p>
                     </div>
                     <p className="font-bold text-green-700">{formatCurrency(expense.amount)}</p>

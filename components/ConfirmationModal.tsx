@@ -20,7 +20,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, 
           <button
             type="button"
             onClick={onClose}
-            className="btn btn-secondary"
+            className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300 transition"
           >
             Cancelar
           </button>
@@ -30,7 +30,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, 
               onConfirm();
               onClose();
             }}
-            className="btn btn-danger"
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"
           >
             Confirmar
           </button>
